@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using TaxpayerAnalytics.LandingPortal.Services;
 using TaxpayerAnalytics.Shared.Configuration;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Security;
@@ -21,6 +22,9 @@ builder.Services.AddDbContext<AnalyticsDbContext>(opt =>
 
 builder.Services.AddSingleton<ITrackingTokenService, TrackingTokenService>();
 builder.Services.AddSingleton<IPiiCipher, PiiCipher>();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IDummyDataSeeder, DummyDataSeeder>();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHsts(o => { o.MaxAge = TimeSpan.FromDays(365); o.IncludeSubDomains = true; o.Preload = true; });

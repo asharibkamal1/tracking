@@ -1,0 +1,279 @@
+@model TaxpayerAnalytics.LandingPortal.Models.LandingPageViewModel
+@{ Layout = null; }
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IRIS 2.0 Landing Page</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+  <div class="landing-wrapper">
+    <header class="site-header">
+      <div class="header-inner">
+        <a href="#" class="iris-logo" aria-label="IRIS 2.0">
+          <img class="iris-logo-img" src="/images/iris-logo.png">
+        </a>
+
+        <nav class="main-nav" aria-label="Main navigation">
+          <a href="#home">Home</a>
+          <a href="#about">About</a>
+          <a href="#video">Video</a>
+          <a href="#register">Register Now</a>
+          <a href="#login" class="btn-login">Login to IRIS</a>
+        </nav>
+
+        <div class="fbr-logo" aria-label="FBR logo">
+          <img src="/images/fbr-logo.png" />
+        </div>
+      </div>
+    </header>
+
+    <section class="hero-section" id="home">
+      <div class="hero-content-civic">
+        <h1 class="hero-title-com">
+          Your Taxes Build <br><span class="blue-com-txt">Pakistan. <img class="combined-grn-ln"
+              src="/images/grn-lne.png" /></span><br>
+          <div class="mt-4">Record-breaking compliance</div>
+        </h1>
+        <span class="combined-md-txt"><span class="combined-grn-bld">7.7M</span> returns filed last year</span>
+        <p class="hero-subtitle mt-4">
+          Pakistanis across the country are stepping forward to support national<br> growth and shared prosperity by
+          fulfilling their tax responsibilities.
+        </p>
+      </div>
+    </section>
+
+    <section class="steps-section" id="impact">
+      <div class="container">
+        <div class="section-kicker">THE IMPACT</div>
+        <h2 class="section-title">Your Contribution Makes a Real Impact</h2>
+
+        <div class="impact-slider-wrap">
+          <button class="slider-arrow left" type="button" id="impactPrev" aria-label="Previous"><i
+              class="bi bi-chevron-left"></i></button>
+          <button class="slider-arrow right" type="button" id="impactNext" aria-label="Next"><i
+              class="bi bi-chevron-right"></i></button>
+
+          <div class="impact-carousel-viewport" id="impactCarouselViewport">
+            <div class="impact-carousel-track" id="impactCarouselTrack">
+              <div class="impact-slide">
+                <div class="impact-card">
+                  <div class="impact-image"
+                    style="background-image:url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=700&q=80');">
+                    <span class="impact-icon"><i class="bi bi-heart"></i></span>
+                  </div>
+                  <div class="impact-body">
+                    <h3 class="impact-title">Hospitals &amp; Healthcare</h3>
+                    <p class="impact-text">Funding modern medical facilities and expanding access to quality healthcare
+                      for all citizens.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="impact-slide">
+                <div class="impact-card">
+                  <div class="impact-image"
+                    style="background-image:url('https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=700&q=80');">
+                    <span class="impact-icon"><i class="bi bi-mortarboard"></i></span>
+                  </div>
+                  <div class="impact-body">
+                    <h3 class="impact-title">Schools &amp; Education</h3>
+                    <p class="impact-text">Building bright classrooms and empowering the next generation with a
+                      world-class education.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="impact-slide">
+                <div class="impact-card">
+                  <div class="impact-image"
+                    style="background-image:url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=700&q=80');">
+                    <span class="impact-icon"><i class="bi bi-diagram-3"></i></span>
+                  </div>
+                  <div class="impact-body">
+                    <h3 class="impact-title">Roads &amp; Infrastructure</h3>
+                    <p class="impact-text">Developing highways and modern infrastructure connecting communities across
+                      Pakistan.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="impact-slide">
+                <div class="impact-card">
+                  <div class="impact-image"
+                    style="background-image:url('https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=700&q=80');">
+                    <span class="impact-icon"><i class="bi bi-house-heart"></i></span>
+                  </div>
+                  <div class="impact-body">
+                    <h3 class="impact-title">Homes &amp; Communities</h3>
+                    <p class="impact-text">Supporting safer neighborhoods and stronger public services for families.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="impact-slide">
+                <div class="impact-card">
+                  <div class="impact-image"
+                    style="background-image:url('https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=700&q=80');">
+                    <span class="impact-icon"><i class="bi bi-people"></i></span>
+                  </div>
+                  <div class="impact-body">
+                    <h3 class="impact-title">Public Services</h3>
+                    <p class="impact-text">Improving access to essential services that help citizens every day.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="video-section pt-5 pb-4" id="video">
+      <div class="container">
+        <div class="video-box-enf-landing">
+          <div class="ratio ratio-16x9">
+            <video controls data-tptrack="video" preload="metadata" playsinline>
+              <source src="@(Model.VideoUrl ?? "/videos/video1.mp4")" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-section" id="register">
+      <div class="container">
+        <div class="section-kicker">Register Now</div>
+        <h2 class="cta-title">Take the first step today</h2>
+        <p class="cta-subtitle">Join millions of responsible Pakistanis. Registration is free, quick, and entirely
+          online.</p>
+
+        <div class="row justify-content-center g-5">
+          <div class="col-lg-4 col-md-6">
+            <a href="/c/redirect?t=@Model.Token&target=register" data-tptrack-cta="register" class="action-card green text-decoration-none">
+              <span class="action-tag">3–5 minutes only</span>
+              <span class="action-icon"><img class="ntn-img" src="/images/ntn.png"></span>
+              <span class="mt-3">
+                <span class="action-title d-block">Get Your NTN</span>
+                <span class="action-meta d-block"><i class="bi bi-card-text me-1"></i> Requires CNIC</span>
+                <span class="action-link">Start Registration <i class="bi bi-arrow-right"></i></span>
+              </span>
+            </a>
+          </div>
+
+          <div class="col-lg-4 col-md-6">
+            <a href="/c/redirect?t=@Model.Token&target=file" data-tptrack-cta="file" class="action-card blue text-decoration-none">
+              <span class="action-tag">Beginner-friendly</span>
+              <span class="action-icon"><i class="bi bi-file-earmark-text"></i></span>
+              <span class="mt-3">
+                <span class="action-title d-block">File Your Return Now</span>
+                <span class="action-meta d-block"><i class="bi bi-shield me-1"></i> Requires NTN / Login</span>
+                <span class="action-link">Start Filing <i class="bi bi-arrow-right"></i></span>
+              </span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-logos">
+          <span class="fbr-logo"><img class="fbr-logo-sm" src="/images/fbr-logo.png" /></span>
+          <span class="iris-logo"><img class="iris-logo-sm" src="/images/iris-logo.png" /></span>
+        </div>
+        <p class="footer-text">
+          This is an official communication from the <b>Federal Board of Revenue (FBR)</b>,<br>
+          Government of Pakistan.
+        </p>
+        <div class="trust-badges">
+          <span class="trust-badge"><i class="bi bi-lock lck-clr"></i> SSL Secure</span>
+          <span class="trust-badge"><i class="bi bi-shield-check shld-clr"></i> Government Cloud</span>
+          <span class="trust-badge"><i class="bi bi-globe globe-clr"></i> iris.fbr.gov.pk</span>
+        </div>
+        <div class="copyright">© 2026 Federal Board of Revenue, Government of Pakistan. All rights reserved.</div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const impactTrack = document.getElementById('impactCarouselTrack');
+    const impactViewport = document.getElementById('impactCarouselViewport');
+    const impactPrev = document.getElementById('impactPrev');
+    const impactNext = document.getElementById('impactNext');
+    const impactSlides = Array.from(document.querySelectorAll('.impact-slide'));
+
+    let impactIndex = 0;
+    let impactTimer = null;
+
+    function getVisibleSlides() {
+      return 3;
+    }
+
+    function getSlideStep() {
+      const firstSlide = impactSlides[0];
+      const trackStyles = window.getComputedStyle(impactTrack);
+      const gap = parseFloat(trackStyles.columnGap || trackStyles.gap) || 0;
+      return firstSlide.offsetWidth + gap;
+    }
+
+    function updateImpactCarousel() {
+      const visibleSlides = getVisibleSlides();
+      const maxIndex = Math.max(impactSlides.length - visibleSlides, 0);
+
+      if (impactIndex > maxIndex) impactIndex = 0;
+      if (impactIndex < 0) impactIndex = maxIndex;
+
+      impactTrack.style.transform = `translateX(-${impactIndex * getSlideStep()}px)`;
+    }
+
+    function moveImpactNext() {
+      impactIndex += 1;
+      updateImpactCarousel();
+    }
+
+    function moveImpactPrev() {
+      impactIndex -= 1;
+      updateImpactCarousel();
+    }
+
+    function startImpactAutoPlay() {
+      stopImpactAutoPlay();
+      impactTimer = setInterval(moveImpactNext, 2500);
+    }
+
+    function stopImpactAutoPlay() {
+      if (impactTimer) clearInterval(impactTimer);
+    }
+
+    impactNext.addEventListener('click', function () {
+      moveImpactNext();
+      startImpactAutoPlay();
+    });
+
+    impactPrev.addEventListener('click', function () {
+      moveImpactPrev();
+      startImpactAutoPlay();
+    });
+
+    impactViewport.addEventListener('mouseenter', stopImpactAutoPlay);
+    impactViewport.addEventListener('mouseleave', startImpactAutoPlay);
+    window.addEventListener('resize', updateImpactCarousel);
+
+    updateImpactCarousel();
+    startImpactAutoPlay();
+  </script>
+  @await Html.PartialAsync("_TrackingScripts", Model)
+</body>
+
+</html>

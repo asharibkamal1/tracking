@@ -1,0 +1,10 @@
+@model TaxpayerAnalytics.LandingPortal.Models.LandingPageViewModel
+<script src="/js/tracking.js" asp-append-version="true"></script>
+<script>
+    window.TPTrack.init({
+        apiBaseUrl: @Html.Raw(Json.Serialize(Model.ApiBaseUrl)),
+        token: @Html.Raw(Json.Serialize(Model.Token)),
+        campaignCode: @Html.Raw(Json.Serialize(Model.CampaignCode)),
+        heartbeatSeconds: 10
+    });
+</script>

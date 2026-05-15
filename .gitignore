@@ -1,0 +1,27 @@
+## .NET
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.user
+*.suo
+*.userprefs
+.vs/
+.vscode/
+*.swp
+
+## Secrets / local config
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+## Build artefacts
+*.dll
+*.pdb
+*.exe
+*.nupkg
+publish/
+
+## OS
+.DS_Store
+Thumbs.db

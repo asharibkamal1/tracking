@@ -50,7 +50,7 @@
         <div class="row g-4 mt-2">
             @foreach (var link in Model)
             {
-                var meta = pageMeta.TryGetValue(link.PageTemplate, out var m) ? m : ("#475569", "");
+                var meta = pageMeta.TryGetValue(link.PageTemplate, out var m) ? m : (Color: "#475569", Description: "");
                 <div class="col-12 col-md-6 col-lg-6">
                     <div class="card card-launch h-100 p-4">
                         <div class="d-flex justify-content-between align-items-start mb-2">

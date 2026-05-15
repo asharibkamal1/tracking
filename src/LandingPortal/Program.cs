@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using TaxpayerAnalytics.LandingPortal.Services;
 using TaxpayerAnalytics.Shared.Configuration;
+using TaxpayerAnalytics.Shared.Data;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Security;
 
@@ -30,6 +31,10 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddHsts(o => { o.MaxAge = TimeSpan.FromDays(365); o.IncludeSubDomains = true; o.Preload = true; });
 
 var app = builder.Build();
+
+// Idempotent DB bootstrap: creates the database if missing, applies db/schema.sql,
+// seeds the 4 page-template campaigns. Skip with Database:AutoApplySchema=false.
+await app.Services.InitializeAnalyticsDatabaseAsync();
 
 if (!app.Environment.IsDevelopment())
 {

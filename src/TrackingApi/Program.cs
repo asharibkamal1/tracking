@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using TaxpayerAnalytics.Shared.Configuration;
+using TaxpayerAnalytics.Shared.Data;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Security;
 using TaxpayerAnalytics.TrackingApi.BackgroundServices;
@@ -64,6 +65,10 @@ builder.Services.AddCors(c => c.AddPolicy("landing", p =>
      .WithHeaders("Content-Type")));
 
 var app = builder.Build();
+
+// Idempotent DB bootstrap: creates the database if missing, applies db/schema.sql,
+// seeds the 4 page-template campaigns. Skip with Database:AutoApplySchema=false.
+await app.Services.InitializeAnalyticsDatabaseAsync();
 
 app.UseSerilogRequestLogging();
 app.UseMiddleware<SecurityHeadersMiddleware>();

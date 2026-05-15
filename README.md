@@ -36,6 +36,27 @@ db/
 
 ## Database setup
 
+**Automatic (default).** Both apps run `db/schema.sql` at startup:
+
+  1. Connect to `master` and `CREATE DATABASE` if missing.
+  2. Apply `db/schema.sql` against the target DB (idempotent: every CREATE is
+     guarded by `IF OBJECT_ID(...) IS NULL` or `IF NOT EXISTS`).
+  3. Seed the 4 campaigns (`GENERAL`, `ENFORCEMENT`, `COMBINED`, `CIVIC`) via
+     a MERGE so re-runs don't duplicate.
+
+So a clean clone just needs a connection string and `dotnet run`. The csproj
+copies `db/schema.sql` to the output dir as `DbScripts/schema.sql`; the
+`SqlSchemaInitializer` reads it from `AppContext.BaseDirectory` at startup.
+
+**Disable auto-apply** for production where a DBA manages migrations:
+
+```jsonc
+// appsettings.Production.json
+{ "Database": { "AutoApplySchema": false } }
+```
+
+**Manual.** Same script, run yourself:
+
 ```bash
 sqlcmd -S . -d master -Q "CREATE DATABASE TaxpayerAnalytics;"
 sqlcmd -S . -d TaxpayerAnalytics -i db/schema.sql
@@ -43,7 +64,8 @@ sqlcmd -S . -d TaxpayerAnalytics -i db/schema.sql
 sqlcmd -S . -d TaxpayerAnalytics -i db/partitioning.sql
 ```
 
-If you prefer EF migrations, generate them once the projects compile:
+**EF Core migrations.** If you prefer EF-tracked migrations over the SQL
+script, generate them once and disable the auto-apply:
 
 ```bash
 cd src
@@ -53,10 +75,6 @@ dotnet ef migrations add InitialCreate \
     --output-dir Migrations
 dotnet ef database update --startup-project TrackingApi
 ```
-
-The seed in `db/schema.sql` creates 4 campaigns — `GENERAL`, `ENFORCEMENT`,
-`COMBINED`, `CIVIC` — one per page template. Your SMS pipeline picks the
-right `CampaignId` when it inserts a recipient.
 
 ## Configuration
 

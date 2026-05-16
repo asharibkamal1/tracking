@@ -13,20 +13,21 @@
         _ => "bi-megaphone-fill"
     };
 
-    var tiles = new (string Label, string Value, string Class, string Icon)[]
+    // (Label, FieldName, FormatString, CssClass, Icon)
+    var tiles = new (string Label, string Field, string Value, string Cls, string Icon)[]
     {
-        ("Recipients",   Model.TotalRecipients.ToString("N0"),    "t-blue",   "bi-envelope-paper"),
-        ("SMS Sent",     Model.TotalSmsSent.ToString("N0"),       "t-blue",   "bi-send"),
-        ("Visits",       Model.TotalVisits.ToString("N0"),        "t-purple", "bi-eye"),
-        ("Unique",       Model.UniqueVisitors.ToString("N0"),     "t-purple", "bi-people"),
-        ("CTR",          $"{Model.ClickThroughRatePct:F2}%",      "t-pink",   "bi-graph-up-arrow"),
-        ("Avg Duration", $"{Model.AvgSessionDurationSec:F1}s",    "t-green",  "bi-stopwatch"),
-        ("Avg Scroll",   $"{Model.AvgScrollDepthPct:F1}%",        "t-green",  "bi-arrows-vertical"),
-        ("Bounce",       $"{Model.BounceRatePct:F2}%",            "t-orange", "bi-arrow-bar-up"),
-        ("Register",     Model.RegisterClicks.ToString("N0"),     "t-green",  "bi-person-plus"),
-        ("File",         Model.FileClicks.ToString("N0"),         "t-blue",   "bi-file-earmark-text"),
-        ("Video Start",  Model.VideoStarts.ToString("N0"),        "t-pink",   "bi-play-circle"),
-        ("Video Done",   Model.VideoCompletions.ToString("N0"),   "t-pink",   "bi-check-circle")
+        ("Recipients",   "recipients", Model.TotalRecipients.ToString("N0"),    "t-blue",   "bi-envelope-paper"),
+        ("SMS Sent",     "sms",        Model.TotalSmsSent.ToString("N0"),       "t-blue",   "bi-send"),
+        ("Visits",       "visits",     Model.TotalVisits.ToString("N0"),        "t-purple", "bi-eye"),
+        ("Unique",       "unique",     Model.UniqueVisitors.ToString("N0"),     "t-purple", "bi-people"),
+        ("CTR",          "ctr",        $"{Model.ClickThroughRatePct:F2}%",      "t-pink",   "bi-graph-up-arrow"),
+        ("Avg Duration", "avgDur",     $"{Model.AvgSessionDurationSec:F1}s",    "t-green",  "bi-stopwatch"),
+        ("Avg Scroll",   "avgScroll",  $"{Model.AvgScrollDepthPct:F1}%",        "t-green",  "bi-arrows-vertical"),
+        ("Bounce",       "bounce",     $"{Model.BounceRatePct:F2}%",            "t-orange", "bi-arrow-bar-up"),
+        ("Register",     "register",   Model.RegisterClicks.ToString("N0"),     "t-green",  "bi-person-plus"),
+        ("File",         "file",       Model.FileClicks.ToString("N0"),         "t-blue",   "bi-file-earmark-text"),
+        ("Video Start",  "vstart",     Model.VideoStarts.ToString("N0"),        "t-pink",   "bi-play-circle"),
+        ("Video Done",   "vdone",      Model.VideoCompletions.ToString("N0"),   "t-pink",   "bi-check-circle")
     };
 }
 
@@ -38,20 +39,21 @@
             <span class="gradient-text">@Model.CampaignCode</span>
             <span class="text-secondary fs-6 ms-2">@Model.Name</span>
         </h3>
+        <div class="text-secondary small mt-1"><span class="pulse-dot me-1"></span>Live · auto-refresh</div>
     </div>
     <div class="text-end">
-        <div class="big-num text-success" id="activeNow" data-count-up>@Model.ActiveUsersNow</div>
+        <div class="big-num text-success" data-field="active" data-count-up>@Model.ActiveUsersNow</div>
         <div class="big-num-sub">active now <span class="pulse-dot ms-1"></span></div>
     </div>
 </div>
 
-<div class="stat-strip fade-in d1">
+<div class="stat-strip fade-in d1" id="campaignStats">
     @foreach (var t in tiles)
     {
-        <div class="stat-tile @t.Class">
+        <div class="stat-tile @t.Cls">
             <i class="bi @t.Icon stat-icon"></i>
             <div class="stat-label">@t.Label</div>
-            <div class="stat-value" data-count-up>@t.Value</div>
+            <div class="stat-value" data-field="@t.Field" data-count-up>@t.Value</div>
         </div>
     }
 </div>
@@ -89,22 +91,55 @@
 @section Scripts {
     <script>
         var campaignId = @Model.CampaignId;
+        var visitsChart, deviceChart;
+        var stats = document.getElementById('campaignStats');
+        var page = document.querySelector('main');
+
         function fetchJson(u) { return fetch(u, { credentials: 'include' }).then(function (r) { return r.json(); }); }
 
-        Promise.all([
-            fetchJson('/api/dashboard/visits?campaignId=' + campaignId + '&bucket=hour'),
-            fetchJson('/api/dashboard/devices?campaignId=' + campaignId),
-            fetchJson('/api/dashboard/geo?campaignId=' + campaignId + '&top=15')
-        ]).then(function (r) {
-            DashCharts.renderVisits('visitsChart', r[0]);
-            DashCharts.renderDevices('deviceChart', r[1]);
-            DashCharts.renderGeo('geoTable', r[2]);
-        });
+        function refreshCharts() {
+            fetchJson('/api/dashboard/visits?campaignId=' + campaignId + '&bucket=hour').then(function (rows) {
+                if (visitsChart) { visitsChart.destroy(); }
+                visitsChart = DashCharts.renderVisits('visitsChart', rows);
+            });
+            fetchJson('/api/dashboard/devices?campaignId=' + campaignId).then(function (rows) {
+                if (deviceChart) { deviceChart.destroy(); }
+                deviceChart = DashCharts.renderDevices('deviceChart', rows);
+            });
+            fetchJson('/api/dashboard/geo?campaignId=' + campaignId + '&top=15').then(function (rows) {
+                DashCharts.renderGeo('geoTable', rows);
+            });
+        }
+        refreshCharts();
+        setInterval(refreshCharts, 30000);
 
-        DashRealtime.start({ scope: 'campaign', campaignId: campaignId }, function (kind, payload) {
-            if (kind === 'liveEvent') DashFeed.prepend('liveList', payload);
-            if (kind === 'activeUsers' && payload.campaignId == campaignId) {
-                document.getElementById('activeNow').textContent = payload.active;
+        DashLive.attach({
+            url: '/api/dashboard/campaign/' + campaignId,
+            hubScope: { scope: 'campaign', campaignId: campaignId },
+            intervalMs: 15000,
+            onLiveEvent: function (evt) {
+                DashFeed.prepend('liveList', evt);
+                // Charts are heavier — debounce them rather than redraw on every event.
+                clearTimeout(window.__chartDeb); window.__chartDeb = setTimeout(refreshCharts, 1500);
+            },
+            onData: function (c) {
+                if (!c) return;
+                DashLive.setField(page, 'active', c.activeUsersNow);
+                DashLive.setField(stats, 'recipients', c.totalRecipients.toLocaleString());
+                DashLive.setField(stats, 'sms',        c.totalSmsSent.toLocaleString());
+                DashLive.setField(stats, 'visits',     c.totalVisits.toLocaleString());
+                DashLive.setField(stats, 'unique',     c.uniqueVisitors.toLocaleString());
+                DashLive.setField(stats, 'ctr',        c.clickThroughRatePct.toFixed(2) + '%');
+                DashLive.setField(stats, 'avgDur',     c.avgSessionDurationSec.toFixed(1) + 's');
+                DashLive.setField(stats, 'avgScroll',  c.avgScrollDepthPct.toFixed(1) + '%');
+                DashLive.setField(stats, 'bounce',     c.bounceRatePct.toFixed(2) + '%');
+                DashLive.setField(stats, 'register',   c.registerClicks.toLocaleString());
+                DashLive.setField(stats, 'file',       c.fileClicks.toLocaleString());
+                DashLive.setField(stats, 'vstart',     c.videoStarts.toLocaleString());
+                DashLive.setField(stats, 'vdone',      c.videoCompletions.toLocaleString());
+            },
+            onActiveUsers: function (payload) {
+                if (payload.campaignId == campaignId) DashLive.setField(page, 'active', payload.active);
             }
         });
     </script>

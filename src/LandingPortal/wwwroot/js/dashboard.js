@@ -139,8 +139,63 @@
     DashAnim.countUp();
   });
 
+  /**
+   * Generic live-data binder used by every dashboard page. On each
+   * SignalR `liveEvent` push (debounced) and on a periodic timer, calls
+   * opts.url and hands the JSON to opts.onData. opts.onActiveUsers is
+   * fired separately for the `activeUsers` push.
+   */
+  var DashLive = {
+    attach: function (opts) {
+      var debounceTimer = null;
+
+      function refresh() {
+        fetch(opts.url, { credentials: 'include' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { try { opts.onData && opts.onData(d); } catch (e) { console.error(e); } })
+          .catch(function () {});
+      }
+      function debouncedRefresh() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(refresh, opts.debounceMs || 600);
+      }
+
+      var iv = setInterval(refresh, opts.intervalMs || 20000);
+      refresh();
+
+      DashRealtime.start(opts.hubScope || { scope: 'all' }, function (kind, payload) {
+        if (kind === 'liveEvent') {
+          if (opts.onLiveEvent) opts.onLiveEvent(payload);
+          debouncedRefresh();
+        }
+        if (kind === 'activeUsers' && opts.onActiveUsers) opts.onActiveUsers(payload);
+      });
+
+      return { refresh: refresh, stop: function () { clearInterval(iv); } };
+    },
+
+    /**
+     * Updates [data-field=...] inside scope to a new value, briefly flashing
+     * the element if the value actually changed. Skips count-up to avoid
+     * re-animating from 0 on every refresh.
+     */
+    setField: function (scope, field, value) {
+      var el = scope.querySelector('[data-field="' + field + '"]');
+      if (!el) return;
+      var current = el.textContent.trim();
+      var next = String(value);
+      if (current === next) return;
+      el.textContent = next;
+      el.classList.remove('flash');
+      // Force reflow so the animation restarts.
+      void el.offsetWidth;
+      el.classList.add('flash');
+    }
+  };
+
   g.DashRealtime = DashRealtime;
   g.DashFeed = DashFeed;
   g.DashCharts = DashCharts;
   g.DashAnim = DashAnim;
+  g.DashLive = DashLive;
 })(window);

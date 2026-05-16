@@ -11,6 +11,7 @@
             <i class="bi bi-person-vcard me-2"></i>NTN <code>@Model.MaskedNtn</code>
             <span class="text-secondary fs-6 ms-2">@Model.CampaignCode · @Model.CampaignName</span>
         </h3>
+        <div class="text-secondary small mt-1"><span class="pulse-dot me-1"></span>Live · timeline updates as the taxpayer interacts</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-sm btn-outline-success" href="/dashboard/export/taxpayer/@Model.RecipientId/excel"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
@@ -28,10 +29,10 @@
                 <tr><td class="text-secondary">Language</td><td class="text-end">@(Model.Language ?? "-")</td></tr>
                 <tr><td class="text-secondary">Created</td><td class="text-end small">@Model.CreatedAt.ToString("u")</td></tr>
                 <tr><td class="text-secondary">SMS Sent</td><td class="text-end small">@(Model.SmsSentAt?.ToString("u") ?? "-")</td></tr>
-                <tr><td class="text-secondary">First Visit</td><td class="text-end small">@(Model.FirstVisitAt?.ToString("u") ?? "-")</td></tr>
-                <tr><td class="text-secondary">Last Visit</td><td class="text-end small">@(Model.LastVisitAt?.ToString("u") ?? "-")</td></tr>
-                <tr><td class="text-secondary">Visit Count</td><td class="text-end" data-count-up>@Model.VisitCount</td></tr>
-                <tr><td class="text-secondary">Sessions</td><td class="text-end" data-count-up>@Model.Sessions.Count</td></tr>
+                <tr><td class="text-secondary">First Visit</td><td class="text-end small" data-field="firstVisit">@(Model.FirstVisitAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">Last Visit</td><td class="text-end small" data-field="lastVisit">@(Model.LastVisitAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">Visit Count</td><td class="text-end" data-field="visitCount" data-count-up>@Model.VisitCount</td></tr>
+                <tr><td class="text-secondary">Sessions</td><td class="text-end" data-field="sessionCount" data-count-up>@Model.Sessions.Count</td></tr>
             </table>
         </div></div>
     </div>
@@ -45,79 +46,93 @@
 
 <h5 class="mb-3 fw-bold fade-in d2"><i class="bi bi-clock-history me-2"></i>Session timeline</h5>
 
-@if (Model.Sessions.Count == 0)
-{
-    <div class="alert alert-info">No sessions recorded yet for this taxpayer.</div>
-}
-
-@foreach (var s in Model.Sessions)
-{
-    <div class="dash-card mb-3 fade-in d3"><div class="card-body p-4">
-        <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
-            <div>
-                <div class="small text-secondary">Session</div>
-                <code class="small">@s.SessionId</code>
-            </div>
-            <div>
-                <div class="small text-secondary">Started</div>
-                <div>@s.StartedAt.ToString("u")</div>
-            </div>
-            <div>
-                <div class="small text-secondary">Ended</div>
-                <div>@(s.EndedAt?.ToString("u") ?? "open")</div>
-            </div>
-            <div>
-                <div class="small text-secondary">Browser / Device</div>
-                <div>@s.Browser on @s.OperatingSystem (@s.DeviceType)</div>
-            </div>
-            <div>
-                <div class="small text-secondary">Geo / IP</div>
-                <div>@(s.City ?? "-"), @(s.Country ?? "-") · <code>@s.IpAddress</code></div>
-            </div>
-            <div class="ms-auto d-flex gap-2">
-                @if (s.IsBot) { <span class="badge bg-warning text-dark">bot</span> }
-                @if (s.IsBounce) { <span class="badge bg-secondary">bounce</span> } else { <span class="badge bg-info text-dark">interacted</span> }
-                @if (s.IsEngaged) { <span class="badge bg-success">engaged</span> }
-                @if (s.RegisterClicked) { <span class="badge bg-success">Register</span> }
-                @if (s.FileClicked) { <span class="badge bg-primary">File</span> }
-            </div>
-        </div>
-
-        <div class="d-flex flex-wrap gap-4 small text-secondary mb-3">
-            <span>Duration: <span class="text-light">@s.DurationSeconds s</span></span>
-            <span>Scroll: <span class="text-light">@s.MaxScrollDepth%</span></span>
-            <span>Video: <span class="text-light">@s.VideoWatchSeconds s (@s.VideoWatchPercent%)</span></span>
-            <span>TTI: <span class="text-light">@s.TimeToFirstInteractionMs ms</span></span>
-            <span>Screen: <span class="text-light">@(s.ScreenResolution ?? "-")</span></span>
-            <span>Referrer: <span class="text-light">@(s.Referrer ?? "-")</span></span>
-        </div>
-
-        <div class="timeline">
-            @foreach (var e in s.Events)
-            {
-                <div class="timeline-row">
-                    <div class="timeline-time">@e.EventTime.ToString("HH:mm:ss.fff")</div>
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-text">
-                        <span class="badge bg-dark border border-secondary">@e.EventTypeName</span>
-                        @if (!string.IsNullOrEmpty(e.EventValue)) { <span class="ms-2">@e.EventValue</span> }
-                        @if (e.ScrollDepth.HasValue) { <span class="text-secondary small">  scroll @e.ScrollDepth%</span> }
-                        @if (e.DurationSeconds.HasValue) { <span class="text-secondary small">  @e.DurationSeconds s</span> }
-                    </div>
-                </div>
-            }
-            @if (s.Events.Count == 0)
-            {
-                <div class="text-secondary small">No events recorded for this session.</div>
-            }
-        </div>
-    </div></div>
-}
+<div id="sessionList"></div>
 
 @section Scripts {
     <script>
-        DashRealtime.start({ scope: 'recipient', recipientId: @Model.RecipientId }, function (kind, payload) {
-            if (kind === 'liveEvent') DashFeed.prepend('liveList', payload);
+        var recipientId = @Model.RecipientId;
+        var sessionList = document.getElementById('sessionList');
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function fmtUtc(iso) { return iso ? new Date(iso).toISOString().replace('T',' ').slice(0,19) + 'Z' : 'open'; }
+        function deviceName(n) {
+            return ['Unknown','Desktop','Mobile','Tablet','Bot'][n] || 'Unknown';
+        }
+
+        function chip(cls, label) { return '<span class="badge ' + cls + ' me-1">' + escapeHtml(label) + '</span>'; }
+
+        function renderSession(s) {
+            var chips = '';
+            if (s.isBot)            chips += chip('bg-warning text-dark', 'bot');
+            chips += s.isBounce ? chip('bg-secondary', 'bounce') : chip('bg-info text-dark', 'interacted');
+            if (s.isEngaged)        chips += chip('bg-success', 'engaged');
+            if (s.registerClicked)  chips += chip('bg-success', 'Register');
+            if (s.fileClicked)      chips += chip('bg-primary', 'File');
+
+            var events = (s.events || []).map(function (e) {
+                var time = new Date(e.eventTime).toISOString().replace('T',' ').slice(11,23);
+                var val = e.eventValue ? ' ' + escapeHtml(e.eventValue) : '';
+                var scroll = (e.scrollDepth != null) ? ' <span class="text-secondary small">scroll ' + e.scrollDepth + '%</span>' : '';
+                var dur = (e.durationSeconds != null) ? ' <span class="text-secondary small">' + e.durationSeconds + 's</span>' : '';
+                return '<div class="timeline-row">' +
+                       '  <div class="timeline-time">' + time + '</div>' +
+                       '  <div class="timeline-dot"></div>' +
+                       '  <div class="timeline-text">' +
+                       '    <span class="badge bg-dark border border-secondary">' + escapeHtml(e.eventTypeName) + '</span>' + val + scroll + dur +
+                       '  </div></div>';
+            }).join('') || '<div class="text-secondary small">No events recorded for this session.</div>';
+
+            return '<div class="dash-card mb-3" data-sid="' + s.sessionId + '"><div class="card-body p-4">' +
+                   '<div class="d-flex flex-wrap gap-3 align-items-center mb-2">' +
+                     '<div><div class="small text-secondary">Session</div><code class="small">' + s.sessionId + '</code></div>' +
+                     '<div><div class="small text-secondary">Started</div><div>' + fmtUtc(s.startedAt) + '</div></div>' +
+                     '<div><div class="small text-secondary">Ended</div><div>' + fmtUtc(s.endedAt) + '</div></div>' +
+                     '<div><div class="small text-secondary">Browser / Device</div><div>' + escapeHtml(s.browser || '-') + ' on ' + escapeHtml(s.operatingSystem || '-') + ' (' + deviceName(s.deviceType) + ')</div></div>' +
+                     '<div><div class="small text-secondary">Geo / IP</div><div>' + escapeHtml(s.city || '-') + ', ' + escapeHtml(s.country || '-') + ' · <code>' + escapeHtml(s.ipAddress || '') + '</code></div></div>' +
+                     '<div class="ms-auto d-flex gap-1 flex-wrap">' + chips + '</div>' +
+                   '</div>' +
+                   '<div class="d-flex flex-wrap gap-4 small text-secondary mb-3">' +
+                     '<span>Duration: <span class="text-light">' + s.durationSeconds + ' s</span></span>' +
+                     '<span>Scroll: <span class="text-light">' + s.maxScrollDepth + '%</span></span>' +
+                     '<span>Video: <span class="text-light">' + s.videoWatchSeconds + ' s (' + s.videoWatchPercent + '%)</span></span>' +
+                     '<span>TTI: <span class="text-light">' + s.timeToFirstInteractionMs + ' ms</span></span>' +
+                     '<span>Screen: <span class="text-light">' + escapeHtml(s.screenResolution || '-') + '</span></span>' +
+                   '</div>' +
+                   '<div class="timeline">' + events + '</div>' +
+                   '</div></div>';
+        }
+
+        DashLive.attach({
+            url: '/api/dashboard/taxpayer/' + recipientId,
+            hubScope: { scope: 'recipient', recipientId: recipientId },
+            intervalMs: 15000,
+            debounceMs: 400,
+            onLiveEvent: function (evt) { DashFeed.prepend('liveList', evt); },
+            onData: function (d) {
+                if (!d) return;
+                var scope = document.querySelector('main');
+                DashLive.setField(scope, 'firstVisit', d.firstVisitAt ? new Date(d.firstVisitAt).toISOString().replace('T',' ').slice(0,19) + 'Z' : '-');
+                DashLive.setField(scope, 'lastVisit',  d.lastVisitAt  ? new Date(d.lastVisitAt).toISOString().replace('T',' ').slice(0,19) + 'Z' : '-');
+                DashLive.setField(scope, 'visitCount', d.visitCount);
+                DashLive.setField(scope, 'sessionCount', d.sessions.length);
+
+                // Detect which sessions are new so we can flash their cards.
+                var existing = {};
+                sessionList.querySelectorAll('[data-sid]').forEach(function (n) { existing[n.dataset.sid] = true; });
+
+                sessionList.innerHTML = (d.sessions || []).map(renderSession).join('') ||
+                    '<div class="alert alert-info">No sessions recorded yet for this taxpayer.</div>';
+
+                (d.sessions || []).forEach(function (s) {
+                    if (!existing[s.sessionId]) {
+                        var card = sessionList.querySelector('[data-sid="' + s.sessionId + '"]');
+                        if (card) card.classList.add('flash');
+                    }
+                });
+            }
         });
     </script>
 }

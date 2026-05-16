@@ -37,6 +37,25 @@ public sealed class DashboardApiController(IDashboardQueryService queries) : Con
     public async Task<object> ActiveUsers([FromQuery] long? campaignId, CancellationToken ct) =>
         new { active = await queries.GetActiveUsersAsync(campaignId, ct), at = DateTime.UtcNow };
 
+    [HttpGet("taxpayer/{recipientId:long}")]
+    public async Task<ActionResult<TaxpayerDetailDto>> Taxpayer(long recipientId, CancellationToken ct)
+    {
+        var detail = await queries.GetTaxpayerDetailAsync(recipientId, ct);
+        return detail is null ? NotFound() : Ok(detail);
+    }
+
+    [HttpGet("taxpayers")]
+    public async Task<object> Taxpayers(
+        [FromQuery] DashboardQuery q,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        var paged = await queries.GetTaxpayerListAsync(q, search, page, pageSize, ct);
+        return paged;
+    }
+
     [HttpGet("feed")]
     public Task<List<LiveEventDto>> Feed([FromQuery] int limit = 50, CancellationToken ct = default) =>
         queries.GetRecentLiveEventsAsync(limit, ct);

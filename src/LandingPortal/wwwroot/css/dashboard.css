@@ -380,6 +380,15 @@ body.dash {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Brief highlight when a value changes from a live refresh */
+.flash {
+    animation: flashHi 1s ease-out;
+}
+@keyframes flashHi {
+    0%   { background: rgba(56,189,248,.35); box-shadow: 0 0 0 3px rgba(56,189,248,.25); border-radius: 4px; }
+    100% { background: transparent; box-shadow: none; }
+}
+
 /* Shimmer placeholder for loading */
 .shimmer {
     background: linear-gradient(90deg, var(--surface) 0%, var(--surface-strong) 50%, var(--surface) 100%);

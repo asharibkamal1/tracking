@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace TaxpayerAnalytics.Shared.Entities;

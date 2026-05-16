@@ -58,7 +58,7 @@ public sealed class SessionRepository(AnalyticsDbContext db) : ISessionRepositor
     }
 }
 
-public sealed class EventRepository(AnalyticsDbContext db) : IEventRepository
+public sealed class EventRepository(AnalyticsDbContext db, ILogger<EventRepository> logger) : IEventRepository
 {
     public Task<UserSession?> GetSessionAsync(Guid sessionId, CancellationToken ct) =>
         db.Sessions.FirstOrDefaultAsync(s => s.SessionId == sessionId, ct);
@@ -66,7 +66,13 @@ public sealed class EventRepository(AnalyticsDbContext db) : IEventRepository
     public async Task UpdateSessionMetricsAsync(Guid sessionId, Action<UserSession> mutate, CancellationToken ct)
     {
         var session = await db.Sessions.FirstOrDefaultAsync(s => s.SessionId == sessionId, ct);
-        if (session is null) return;
+        if (session is null)
+        {
+            // Possible race: events arrive after the session row was deleted (test reset)
+            // or a client sent a forged SessionId. Skip silently after a warning.
+            logger.LogWarning("UpdateSessionMetrics: session {Sid} not found", sessionId);
+            return;
+        }
         mutate(session);
         await db.SaveChangesAsync(ct);
     }

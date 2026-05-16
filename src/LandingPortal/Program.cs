@@ -108,6 +108,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// Top-of-pipeline so it catches anything thrown by later middleware/MVC.
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();

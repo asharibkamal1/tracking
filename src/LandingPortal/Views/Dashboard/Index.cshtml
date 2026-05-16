@@ -1,4 +1,5 @@
 @model List<TaxpayerAnalytics.Shared.Dtos.CampaignOverviewDto>
+@using TaxpayerAnalytics.LandingPortal.Models
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Overview";
@@ -12,15 +13,6 @@
         if (!q.ExcludeBots) parts.Add("excludeBots=false");
         qs = parts.Count == 0 ? "" : "?" + string.Join("&", parts);
     }
-
-    string TemplateIcon(string t) => t switch
-    {
-        "Index" => "bi-info-circle-fill",
-        "Enforcement" => "bi-shield-fill-exclamation",
-        "Combined" => "bi-layers-fill",
-        "CivicDuty" => "bi-flag-fill",
-        _ => "bi-megaphone-fill"
-    };
 
     var totalRecipients = Model.Sum(c => c.TotalRecipients);
     var totalVisits = Model.Sum(c => c.TotalVisits);
@@ -97,11 +89,11 @@
     @{ int delay = 2; }
     @foreach (var c in Model)
     {
-        var tpl = c.PageTemplate?.ToLower() ?? "index";
+        var meta = PageTemplateMeta.For(c.PageTemplate);
         <div class="col-12 col-md-6 col-xl-3 fade-in d@(Math.Min(delay++, 6))">
-            <div class="dash-card campaign-card tpl-@tpl h-100" data-cid="@c.CampaignId">
+            <div class="dash-card campaign-card @meta.CssClass h-100" data-cid="@c.CampaignId">
                 <div class="campaign-head d-flex align-items-start gap-3">
-                    <div class="campaign-icon"><i class="bi @TemplateIcon(c.PageTemplate)"></i></div>
+                    <div class="campaign-icon"><i class="bi @meta.IconClass"></i></div>
                     <div class="flex-grow-1">
                         <div class="campaign-code gradient-text">@c.CampaignCode</div>
                         <div class="campaign-name">@c.Name</div>

@@ -151,9 +151,15 @@
 
       function refresh() {
         fetch(opts.url, { credentials: 'include' })
-          .then(function (r) { return r.json(); })
-          .then(function (d) { try { opts.onData && opts.onData(d); } catch (e) { console.error(e); } })
-          .catch(function () {});
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status + ' on ' + opts.url);
+            return r.json();
+          })
+          .then(function (d) {
+            try { opts.onData && opts.onData(d); }
+            catch (e) { console.error('DashLive.onData failed for ' + opts.url, e); }
+          })
+          .catch(function (e) { console.warn('DashLive refresh failed', e); });
       }
       function debouncedRefresh() {
         clearTimeout(debounceTimer);

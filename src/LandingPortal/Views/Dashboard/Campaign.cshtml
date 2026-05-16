@@ -1,17 +1,9 @@
 @model TaxpayerAnalytics.Shared.Dtos.CampaignOverviewDto
+@using TaxpayerAnalytics.LandingPortal.Models
 @{
     Layout = "_Layout";
     ViewData["Title"] = $"{Model.CampaignCode} · Campaign";
-    var tpl = Model.PageTemplate?.ToLower() ?? "index";
-
-    string TemplateIcon(string t) => t switch
-    {
-        "Index" => "bi-info-circle-fill",
-        "Enforcement" => "bi-shield-fill-exclamation",
-        "Combined" => "bi-layers-fill",
-        "CivicDuty" => "bi-flag-fill",
-        _ => "bi-megaphone-fill"
-    };
+    var meta = PageTemplateMeta.For(Model.PageTemplate);
 
     // (Label, FieldName, FormatString, CssClass, Icon)
     var tiles = new (string Label, string Field, string Value, string Cls, string Icon)[]
@@ -34,8 +26,8 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 fade-in">
     <div>
         <a href="/dashboard" class="text-decoration-none small text-secondary"><i class="bi bi-arrow-left me-1"></i>Overview</a>
-        <h3 class="mb-0 mt-1 fw-bold tpl-@tpl">
-            <i class="bi @TemplateIcon(Model.PageTemplate) me-2"></i>
+        <h3 class="mb-0 mt-1 fw-bold @meta.CssClass">
+            <i class="bi @meta.IconClass me-2"></i>
             <span class="gradient-text">@Model.CampaignCode</span>
             <span class="text-secondary fs-6 ms-2">@Model.Name</span>
         </h3>

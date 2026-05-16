@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaxpayerAnalytics.LandingPortal.Services.Dashboard;
+using TaxpayerAnalytics.Shared.Constants;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
 
@@ -39,7 +40,7 @@ public sealed class ActiveUsersBroadcaster(
             {
                 logger.LogError(ex, "Active-users broadcast tick failed");
             }
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(TrackingLimits.ActiveUsersBroadcastSeconds), stoppingToken);
         }
     }
 }

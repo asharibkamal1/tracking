@@ -106,8 +106,10 @@
       credentials: 'omit',
       keepalive: true
     }).then(function (r) {
+      if (!r.ok) log('batch POST', r.status, url);
       if (!r.ok && r.status >= 500 && attempt < 3) scheduleRetry(url, body, attempt + 1);
-    }).catch(function () {
+    }).catch(function (e) {
+      log('batch POST network error', e);
       if (attempt < 3) scheduleRetry(url, body, attempt + 1);
     });
   }

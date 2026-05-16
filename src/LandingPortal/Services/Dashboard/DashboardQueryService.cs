@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaxpayerAnalytics.Shared.Constants;
 using TaxpayerAnalytics.Shared.Dtos;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
@@ -148,7 +149,7 @@ public sealed class DashboardQueryService(AnalyticsDbContext db) : IDashboardQue
     {
         var (from, to) = ResolveRange(q);
         page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 10, 200);
+        pageSize = Math.Clamp(pageSize, TrackingLimits.MinPageSize, TrackingLimits.MaxPageSize);
 
         IQueryable<TaxpayerRecipient> baseQuery = db.Recipients.AsNoTracking().Include(r => r.Campaign);
         if (q.CampaignId.HasValue) baseQuery = baseQuery.Where(r => r.CampaignId == q.CampaignId.Value);
@@ -272,8 +273,9 @@ public sealed class DashboardQueryService(AnalyticsDbContext db) : IDashboardQue
 
     public async Task<int> GetActiveUsersAsync(long? campaignId, CancellationToken ct)
     {
-        // "Active" = a heartbeat in the last 30 seconds. The tracking SDK fires every 10s.
-        var threshold = DateTime.UtcNow.AddSeconds(-30);
+        // "Active" = a heartbeat within TrackingLimits.ActiveUserWindowSeconds. The
+        // tracking SDK fires every 10s, so this gives one missed heartbeat of slack.
+        var threshold = DateTime.UtcNow.AddSeconds(-TrackingLimits.ActiveUserWindowSeconds);
         var q = db.Sessions.AsNoTracking().Where(s => s.LastHeartbeatAt >= threshold && !s.IsBot);
         if (campaignId.HasValue) q = q.Where(s => s.CampaignId == campaignId);
         return await q.CountAsync(ct);
@@ -281,7 +283,7 @@ public sealed class DashboardQueryService(AnalyticsDbContext db) : IDashboardQue
 
     public async Task<List<LiveEventDto>> GetRecentLiveEventsAsync(int limit, CancellationToken ct)
     {
-        limit = Math.Clamp(limit, 1, 200);
+        limit = Math.Clamp(limit, 1, TrackingLimits.MaxPageSize);
         var rows = await (from e in db.Events.AsNoTracking()
                           join s in db.Sessions.AsNoTracking() on e.SessionId equals s.SessionId
                           join r in db.Recipients.AsNoTracking() on s.RecipientId equals r.RecipientId

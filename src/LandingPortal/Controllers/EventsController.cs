@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TaxpayerAnalytics.LandingPortal.Repositories;
 using TaxpayerAnalytics.LandingPortal.Services;
 using TaxpayerAnalytics.LandingPortal.Services.Dashboard;
+using TaxpayerAnalytics.Shared.Constants;
 using TaxpayerAnalytics.Shared.Dtos;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
@@ -26,7 +27,7 @@ public sealed class EventsController(
         CancellationToken ct)
     {
         if (req.Events.Count == 0) return Ok(new TrackResponse { Accepted = 0 });
-        if (req.Events.Count > 200) return BadRequest(new { error = "batch_too_large" });
+        if (req.Events.Count > TrackingLimits.MaxEventsPerBatch) return BadRequest(new { error = "batch_too_large" });
 
         var sessionId = req.Events[0].SessionId;
         if (req.Events.Any(e => e.SessionId != sessionId))
@@ -107,8 +108,7 @@ public sealed class EventsController(
                 }
             }
             s.LastHeartbeatAt = DateTime.UtcNow;
-            s.IsEngaged = s.DurationSeconds >= 15 || s.MaxScrollDepth >= 50
-                          || s.RegisterClicked || s.FileClicked || s.VideoWatchPercent >= 25;
+            s.IsEngaged = ComputeEngaged(s);
         }, ct);
 
         logger.LogDebug("Batch session={Sid} accepted={A} rejected={R}", sessionId, accepted, rejected);
@@ -176,8 +176,7 @@ public sealed class EventsController(
             s.DurationSeconds = Math.Max(s.DurationSeconds, req.DurationSeconds);
             s.MaxScrollDepth = Math.Max(s.MaxScrollDepth, req.MaxScrollDepth);
             s.VideoWatchSeconds = Math.Max(s.VideoWatchSeconds, req.VideoWatchSeconds);
-            s.IsEngaged = s.DurationSeconds >= 15 || s.MaxScrollDepth >= 50
-                          || s.RegisterClicked || s.FileClicked || s.VideoWatchPercent >= 25;
+            s.IsEngaged = ComputeEngaged(s);
         }, ct);
 
         queue.TryEnqueue(new EventLog
@@ -193,6 +192,12 @@ public sealed class EventsController(
 
         return NoContent();
     }
+
+    private static bool ComputeEngaged(UserSession s) =>
+        s.DurationSeconds >= EngagementRules.EngagedDurationSeconds
+        || s.MaxScrollDepth >= EngagementRules.EngagedScrollPercent
+        || s.RegisterClicked || s.FileClicked
+        || s.VideoWatchPercent >= EngagementRules.EngagedVideoWatchPercent;
 
     // System.Text.Json deserialises Dictionary<string, object?> values as JsonElement,
     // so we can't just cast — peek the kind and pull the number out.

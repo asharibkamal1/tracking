@@ -58,20 +58,53 @@ public sealed class EventsController(
             foreach (var dto in req.Events)
             {
                 if (dto.ScrollDepth is int sd && sd > s.MaxScrollDepth) s.MaxScrollDepth = sd;
-                if (dto.EventType == EventType.RegisterClick) { s.RegisterClicked = true; s.RegisterClickedAt ??= DateTime.UtcNow; }
-                if (dto.EventType == EventType.FileClick) { s.FileClicked = true; s.FileClickedAt ??= DateTime.UtcNow; }
+
+                if (dto.EventType == EventType.RegisterClick)
+                {
+                    s.RegisterClicked = true;
+                    s.RegisterClickedAt ??= dto.ClientEventTime?.ToUniversalTime() ?? DateTime.UtcNow;
+                }
+                if (dto.EventType == EventType.FileClick)
+                {
+                    s.FileClicked = true;
+                    s.FileClickedAt ??= dto.ClientEventTime?.ToUniversalTime() ?? DateTime.UtcNow;
+                }
+
                 if (dto.EventType is EventType.RegisterClick or EventType.FileClick or EventType.CtaClick)
+                {
                     s.IsBounce = false;
-                if (dto.EventType == EventType.VideoProgress && dto.DurationSeconds is int vw && vw > s.VideoWatchSeconds)
-                    s.VideoWatchSeconds = vw;
+                    // Capture how long the visitor stared at the page before their first
+                    // meaningful click. Only set once — subsequent CTA clicks don't overwrite.
+                    if (s.TimeToFirstInteractionMs == 0)
+                    {
+                        var tti = ExtractInt(dto.Extra, "timeToInteractMs");
+                        if (tti is int t && t > 0) s.TimeToFirstInteractionMs = t;
+                    }
+                }
+
+                if (dto.EventType == EventType.VideoProgress)
+                {
+                    if (dto.DurationSeconds is int vw && vw > s.VideoWatchSeconds) s.VideoWatchSeconds = vw;
+                    var pct = ExtractInt(dto.Extra, "percent");
+                    if (pct is int p && p > s.VideoWatchPercent) s.VideoWatchPercent = Math.Min(100, p);
+                }
+
                 if (dto.EventType == EventType.VideoComplete)
                 {
                     s.IsBounce = false;
                     if (dto.DurationSeconds is int vc && vc > s.VideoWatchSeconds) s.VideoWatchSeconds = vc;
                     s.VideoWatchPercent = 100;
                 }
+
+                if (dto.EventType == EventType.PageClose)
+                {
+                    if (dto.DurationSeconds is int dur && dur > s.DurationSeconds) s.DurationSeconds = dur;
+                    s.EndedAt = dto.ClientEventTime?.ToUniversalTime() ?? DateTime.UtcNow;
+                }
             }
             s.LastHeartbeatAt = DateTime.UtcNow;
+            s.IsEngaged = s.DurationSeconds >= 15 || s.MaxScrollDepth >= 50
+                          || s.RegisterClicked || s.FileClicked || s.VideoWatchPercent >= 25;
         }, ct);
 
         logger.LogDebug("Batch session={Sid} accepted={A} rejected={R}", sessionId, accepted, rejected);
@@ -91,7 +124,8 @@ public sealed class EventsController(
             s.DurationSeconds = Math.Max(s.DurationSeconds, req.DurationSeconds);
             s.MaxScrollDepth = Math.Max(s.MaxScrollDepth, req.MaxScrollDepth);
             s.VideoWatchSeconds = Math.Max(s.VideoWatchSeconds, req.VideoWatchSeconds);
-            s.IsEngaged = s.DurationSeconds >= 15 || s.MaxScrollDepth >= 50;
+            s.IsEngaged = s.DurationSeconds >= 15 || s.MaxScrollDepth >= 50
+                          || s.RegisterClicked || s.FileClicked || s.VideoWatchPercent >= 25;
         }, ct);
 
         queue.TryEnqueue(new EventLog
@@ -106,5 +140,21 @@ public sealed class EventsController(
         });
 
         return NoContent();
+    }
+
+    // System.Text.Json deserialises Dictionary<string, object?> values as JsonElement,
+    // so we can't just cast — peek the kind and pull the number out.
+    private static int? ExtractInt(IDictionary<string, object?>? extra, string key)
+    {
+        if (extra is null || !extra.TryGetValue(key, out var v) || v is null) return null;
+        if (v is JsonElement je && je.ValueKind == JsonValueKind.Number)
+        {
+            if (je.TryGetInt32(out var n)) return n;
+            if (je.TryGetDouble(out var d)) return (int)d;
+        }
+        if (v is int i) return i;
+        if (v is long l) return (int)l;
+        if (v is double dv) return (int)dv;
+        return null;
     }
 }

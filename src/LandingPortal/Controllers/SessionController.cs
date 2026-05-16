@@ -42,6 +42,14 @@ public sealed class SessionController(
         var ip = ResolveClientIp();
         var geoInfo = geo.Lookup(ip);
 
+        // GeoIP databases don't carry data for loopback addresses (::1, 127.0.0.1) and
+        // most local subnets. Tag those explicitly so the columns aren't NULL in dev —
+        // a real production deployment with a configured MaxMind DB will get real geo.
+        if (geoInfo.Country is null && IsLocalAddress(ip))
+        {
+            geoInfo = new Services.GeoLookupResult("Local", "Localhost", "Local", null, null);
+        }
+
         var now = DateTime.UtcNow;
         var session = new UserSession
         {
@@ -104,5 +112,15 @@ public sealed class SessionController(
             if (!string.IsNullOrEmpty(first)) return first;
         }
         return HttpContext.Connection.RemoteIpAddress?.ToString();
+    }
+
+    private static bool IsLocalAddress(string? ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return false;
+        return ip is "::1" or "127.0.0.1"
+               || ip.StartsWith("10.", StringComparison.Ordinal)
+               || ip.StartsWith("192.168.", StringComparison.Ordinal)
+               || ip.StartsWith("172.16.", StringComparison.Ordinal)
+               || ip.StartsWith("fe80:", StringComparison.OrdinalIgnoreCase);
     }
 }

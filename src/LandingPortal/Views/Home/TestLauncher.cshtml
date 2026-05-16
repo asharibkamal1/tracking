@@ -63,10 +63,13 @@
                         <h6 class="mb-1">Dummy NTN</h6>
                         <div class="mb-3"><code>@link.MaskedNtn</code></div>
 
-                        <h6 class="mb-1">SMS landing URL</h6>
+                        <h6 class="mb-1 d-flex justify-content-between align-items-center">
+                            <span>SMS landing URL</span>
+                            <span class="badge @(link.SmsUrlLength <= 160 ? "bg-success" : "bg-danger")">@link.SmsUrlLength / 160 chars</span>
+                        </h6>
                         <div class="url-box mb-3">@link.LandingUrl</div>
 
-                        <h6 class="mb-1">Encrypted token (debug)</h6>
+                        <h6 class="mb-1">Opaque token</h6>
                         <div class="token-box mb-3">@link.TrackingToken</div>
 
                         <div class="d-grid gap-2">

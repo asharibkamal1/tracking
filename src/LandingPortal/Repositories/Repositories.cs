@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using TaxpayerAnalytics.Shared.Entities;
 
-namespace TaxpayerAnalytics.TrackingApi.Repositories;
+namespace TaxpayerAnalytics.LandingPortal.Repositories;
 
 public interface ISessionRepository
 {
-    Task<TaxpayerRecipient?> GetRecipientAsync(long recipientId, CancellationToken ct);
+    Task<TaxpayerRecipient?> GetRecipientByTokenAsync(string token, CancellationToken ct);
     Task<UserSession> CreateSessionAsync(UserSession session, CancellationToken ct);
     Task IncrementVisitAsync(long recipientId, DateTime visitAt, CancellationToken ct);
 }
@@ -18,8 +18,10 @@ public interface IEventRepository
 
 public sealed class SessionRepository(AnalyticsDbContext db) : ISessionRepository
 {
-    public Task<TaxpayerRecipient?> GetRecipientAsync(long recipientId, CancellationToken ct) =>
-        db.Recipients.Include(r => r.Campaign).FirstOrDefaultAsync(r => r.RecipientId == recipientId, ct);
+    public Task<TaxpayerRecipient?> GetRecipientByTokenAsync(string token, CancellationToken ct) =>
+        db.Recipients
+            .Include(r => r.Campaign)
+            .FirstOrDefaultAsync(r => r.TrackingToken == token, ct);
 
     public async Task<UserSession> CreateSessionAsync(UserSession session, CancellationToken ct)
     {

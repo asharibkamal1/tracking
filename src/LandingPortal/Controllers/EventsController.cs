@@ -1,18 +1,19 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using TaxpayerAnalytics.LandingPortal.Repositories;
+using TaxpayerAnalytics.LandingPortal.Services;
 using TaxpayerAnalytics.Shared.Dtos;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
-using TaxpayerAnalytics.TrackingApi.Repositories;
-using TaxpayerAnalytics.TrackingApi.Services;
 
-namespace TaxpayerAnalytics.TrackingApi.Controllers;
+namespace TaxpayerAnalytics.LandingPortal.Controllers;
 
 [ApiController]
 [Route("api/v1/events")]
 public sealed class EventsController(
     IEventIngestionQueue queue,
-    IEventRepository events) : ControllerBase
+    IEventRepository events,
+    ILogger<EventsController> logger) : ControllerBase
 {
     [HttpPost("batch")]
     [Consumes("application/json")]
@@ -23,7 +24,6 @@ public sealed class EventsController(
         if (req.Events.Count == 0) return Ok(new TrackResponse { Accepted = 0 });
         if (req.Events.Count > 200) return BadRequest(new { error = "batch_too_large" });
 
-        // All events in a batch must share a session. Validate up front (one round-trip).
         var sessionId = req.Events[0].SessionId;
         if (req.Events.Any(e => e.SessionId != sessionId))
             return BadRequest(new { error = "mixed_sessions" });
@@ -53,8 +53,6 @@ public sealed class EventsController(
             if (queue.TryEnqueue(evt)) accepted++; else rejected++;
         }
 
-        // Best-effort live session aggregates so the dashboard (when we add it) doesn't
-        // have to wait for the async event flush to learn about clicks / scroll.
         await events.UpdateSessionMetricsAsync(sessionId, s =>
         {
             foreach (var dto in req.Events)
@@ -66,16 +64,27 @@ public sealed class EventsController(
                     s.IsBounce = false;
                 if (dto.EventType == EventType.VideoProgress && dto.DurationSeconds is int vw && vw > s.VideoWatchSeconds)
                     s.VideoWatchSeconds = vw;
+                if (dto.EventType == EventType.VideoComplete)
+                {
+                    s.IsBounce = false;
+                    if (dto.DurationSeconds is int vc && vc > s.VideoWatchSeconds) s.VideoWatchSeconds = vc;
+                    s.VideoWatchPercent = 100;
+                }
             }
             s.LastHeartbeatAt = DateTime.UtcNow;
         }, ct);
 
+        logger.LogDebug("Batch session={Sid} accepted={A} rejected={R}", sessionId, accepted, rejected);
         return Ok(new TrackResponse { Accepted = accepted, Rejected = rejected });
     }
 
     [HttpPost("heartbeat")]
     public async Task<IActionResult> Heartbeat([FromBody] HeartbeatRequest req, CancellationToken ct)
     {
+        var session = await events.GetSessionAsync(req.SessionId, ct);
+        if (session is null) return NotFound(new { error = "session_not_found" });
+        if (session.IsBot) return NoContent();
+
         await events.UpdateSessionMetricsAsync(req.SessionId, s =>
         {
             s.LastHeartbeatAt = DateTime.UtcNow;
@@ -88,6 +97,8 @@ public sealed class EventsController(
         queue.TryEnqueue(new EventLog
         {
             SessionId = req.SessionId,
+            RecipientId = session.RecipientId,
+            CampaignId = session.CampaignId,
             EventType = EventType.Heartbeat,
             EventTime = DateTime.UtcNow,
             DurationSeconds = req.DurationSeconds,

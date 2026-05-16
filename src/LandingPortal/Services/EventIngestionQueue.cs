@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using TaxpayerAnalytics.Shared.Entities;
 
-namespace TaxpayerAnalytics.TrackingApi.Services;
+namespace TaxpayerAnalytics.LandingPortal.Services;
 
 public interface IEventIngestionQueue
 {

@@ -16,13 +16,12 @@ public sealed record DummyRecipientInfo(
     string PageTemplate,
     string MaskedNtn,
     string TrackingToken,
-    string LandingUrl);
+    string LandingUrl,
+    int SmsUrlLength);
 
 /// <summary>
 /// Idempotently creates one dummy TaxpayerRecipient per seeded campaign so we can
-/// click through to each landing page during local testing. The 4 dummy NTNs are
-/// clearly distinguishable (1111111-1, 2222222-2, ...) and the masked form is what
-/// the test launcher displays.
+/// click through to each landing page during local testing.
 /// </summary>
 public sealed class DummyDataSeeder(
     AnalyticsDbContext db,
@@ -70,21 +69,18 @@ public sealed class DummyDataSeeder(
                     MobileEncrypted = cipher.Encrypt(mobile),
                     MobileMasked = cipher.MaskMobile(mobile),
                     Language = "en",
-                    // Placeholder; we overwrite with a real token once we have the id.
-                    TrackingToken = Guid.NewGuid().ToString("N"),
+                    TrackingToken = tokens.Issue(),
                     CreatedAt = DateTime.UtcNow,
                     SmsSentAt = DateTime.UtcNow
                 };
                 db.Recipients.Add(recipient);
                 await db.SaveChangesAsync(ct);
-
-                recipient.TrackingToken = tokens.Issue(recipient.RecipientId, recipient.CampaignId);
-                await db.SaveChangesAsync(ct);
             }
-            else if (string.IsNullOrEmpty(recipient.TrackingToken) || recipient.TrackingToken.Length < 50)
+            else if (recipient.TrackingToken.Length > 32)
             {
-                // Heal old rows where the token wasn't a proper AES-GCM payload.
-                recipient.TrackingToken = tokens.Issue(recipient.RecipientId, recipient.CampaignId);
+                // Migrate any legacy long encrypted tokens to the new short form so
+                // the test URLs fit comfortably under the 160-char SMS budget.
+                recipient.TrackingToken = tokens.Issue();
                 await db.SaveChangesAsync(ct);
             }
 
@@ -95,7 +91,8 @@ public sealed class DummyDataSeeder(
                 campaign.PageTemplate,
                 recipient.MaskedNtn ?? "****",
                 recipient.TrackingToken,
-                landing));
+                landing,
+                landing.Length));
         }
 
         return results;

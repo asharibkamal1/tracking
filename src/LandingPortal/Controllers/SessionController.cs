@@ -1,17 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
+using TaxpayerAnalytics.LandingPortal.Repositories;
+using TaxpayerAnalytics.LandingPortal.Services;
 using TaxpayerAnalytics.Shared.Dtos;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
 using TaxpayerAnalytics.Shared.Security;
-using TaxpayerAnalytics.TrackingApi.Repositories;
-using TaxpayerAnalytics.TrackingApi.Services;
 
-namespace TaxpayerAnalytics.TrackingApi.Controllers;
+namespace TaxpayerAnalytics.LandingPortal.Controllers;
 
 [ApiController]
 [Route("api/v1/session")]
 public sealed class SessionController(
-    ITrackingTokenService tokens,
     ISessionRepository sessions,
     IGeoIpService geo,
     IUserAgentParser uaParser,
@@ -26,12 +25,15 @@ public sealed class SessionController(
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        if (!tokens.TryValidate(req.Token, out var payload) || payload is null)
-            return Unauthorized(new { error = "invalid_token" });
+        if (string.IsNullOrWhiteSpace(req.Token))
+            return Unauthorized(new { error = "missing_token" });
 
-        var recipient = await sessions.GetRecipientAsync(payload.RecipientId, ct);
-        if (recipient is null || recipient.CampaignId != payload.CampaignId)
-            return NotFound(new { error = "recipient_not_found" });
+        var recipient = await sessions.GetRecipientByTokenAsync(req.Token, ct);
+        if (recipient is null)
+        {
+            logger.LogWarning("Unknown tracking token presented (start)");
+            return Unauthorized(new { error = "invalid_token" });
+        }
 
         var ua = Request.Headers.UserAgent.ToString();
         var headers = Request.Headers.ToDictionary(h => h.Key, h => (string?)h.Value.ToString());
@@ -81,8 +83,10 @@ public sealed class SessionController(
             EventValue = botResult.Reason
         });
 
-        logger.LogInformation("Session {Sid} started for recipient {Rid} campaign {Cid} bot={Bot}",
-            session.SessionId, recipient.RecipientId, recipient.CampaignId, botResult.IsBot);
+        logger.LogInformation(
+            "Session {Sid} started recipient={Rid} campaign={Cid} bot={Bot} browser={Br} device={Dev}",
+            session.SessionId, recipient.RecipientId, recipient.CampaignId,
+            botResult.IsBot, uaInfo.Browser, uaInfo.DeviceType);
 
         return Ok(new StartSessionResponse
         {

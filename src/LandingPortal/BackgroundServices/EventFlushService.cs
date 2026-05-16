@@ -1,7 +1,7 @@
+using TaxpayerAnalytics.LandingPortal.Services;
 using TaxpayerAnalytics.Shared.Entities;
-using TaxpayerAnalytics.TrackingApi.Services;
 
-namespace TaxpayerAnalytics.TrackingApi.BackgroundServices;
+namespace TaxpayerAnalytics.LandingPortal.BackgroundServices;
 
 /// <summary>
 /// Drains the in-memory queue into SQL Server in batches. A fresh DbContext per flush
@@ -44,10 +44,10 @@ public sealed class EventFlushService(
             db.ChangeTracker.AutoDetectChangesEnabled = false;
             await db.Events.AddRangeAsync(batch, ct);
             await db.SaveChangesAsync(ct);
+            logger.LogDebug("Flushed {Count} events to SQL", batch.Count);
         }
         catch (Exception ex)
         {
-            // Swallow + log: losing the batch is preferable to halting the background service.
             logger.LogError(ex, "Failed to flush {Count} events", batch.Count);
         }
     }

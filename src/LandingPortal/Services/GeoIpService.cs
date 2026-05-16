@@ -2,7 +2,7 @@ using MaxMind.GeoIP2;
 using Microsoft.Extensions.Options;
 using TaxpayerAnalytics.Shared.Configuration;
 
-namespace TaxpayerAnalytics.TrackingApi.Services;
+namespace TaxpayerAnalytics.LandingPortal.Services;
 
 public interface IGeoIpService
 {

@@ -1,8 +1,9 @@
 @model TaxpayerAnalytics.LandingPortal.Models.LandingPageViewModel
 <script src="/js/tracking.js" asp-append-version="true"></script>
 <script>
+    // apiBaseUrl is '' so the SDK uses same-origin relative URLs (no CORS surface).
     window.TPTrack.init({
-        apiBaseUrl: @Html.Raw(Json.Serialize(Model.ApiBaseUrl)),
+        apiBaseUrl: '',
         token: @Html.Raw(Json.Serialize(Model.Token)),
         campaignCode: @Html.Raw(Json.Serialize(Model.CampaignCode)),
         heartbeatSeconds: 10

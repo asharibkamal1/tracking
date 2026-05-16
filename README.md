@@ -86,7 +86,33 @@ That's it — one process. On first start:
       - `/c?t=<token>` — the actual landing page
       - `/c/redirect?t=...&target=register|file` — tracked outbound
       - `/api/v1/session/start`, `/api/v1/events/batch`, `/api/v1/events/heartbeat`
+      - `/dashboard` — real-time analytics dashboard (cookie-protected)
+      - `/hubs/dashboard` — SignalR push channel
       - `/health` — liveness probe
+
+## Dashboard
+
+Sign in at `/dashboard/login` with the admin credentials from
+`appsettings.json` (`Dashboard:Admin:Username` / `Dashboard:Admin:Password`).
+Default is `admin` / `admin` — change before deploying anywhere.
+
+Available views:
+
+| Route | What it shows |
+| --- | --- |
+| `/dashboard` | Overview cards for all 4 campaigns with KPIs and a live "active now" badge updated via SignalR every 5s. |
+| `/dashboard/campaign/{id}` | Drill-down: KPIs, visits time series (Chart.js), device doughnut, top geos, per-campaign live event feed. |
+| `/dashboard/taxpayers` | Paginated list of every recipient (masked NTN, last seen, total duration, scroll/video, register/file flags). Click a row → detail. |
+| `/dashboard/taxpayers/{rid}` | Individual taxpayer: full session timeline, every event in order with timestamps, plus live updates if they're active right now. |
+| `/dashboard/feed` | Firehose of all incoming events across every campaign in real time. |
+| `/dashboard/export/excel?...` | Multi-sheet workbook (campaigns + taxpayers). |
+| `/dashboard/export/pdf?...` | Overview PDF. |
+| `/dashboard/export/taxpayer/{rid}/excel` / `.../pdf` | Per-taxpayer report. |
+
+The realtime updates flow through a SignalR hub at `/hubs/dashboard`.
+`SessionController` and `EventsController` push events as they arrive;
+a `ActiveUsersBroadcaster` hosted service publishes the per-campaign
+active-user count every 5 seconds.
 
 Open `https://localhost:5001/` (Dev) and click into any of the 4 cards. Each
 card shows the URL length so you can verify it fits in a single SMS.

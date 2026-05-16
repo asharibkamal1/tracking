@@ -1,0 +1,111 @@
+/* Dashboard front-end helpers. Three small modules expose to window:
+ *   DashRealtime — single SignalR connection per page, filtered by scope.
+ *   DashFeed     — prepends LiveEvent rows into a list container.
+ *   DashCharts   — Chart.js wrappers for visits / devices / geo.
+ */
+(function (g) {
+  'use strict';
+
+  var DashRealtime = {
+    start: function (opts, onMessage) {
+      var conn = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/dashboard')
+        .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+        .build();
+
+      conn.on('liveEvent', function (p) { onMessage && onMessage('liveEvent', p); });
+      conn.on('activeUsers', function (p) { onMessage && onMessage('activeUsers', p); });
+
+      conn.onreconnecting(function () { opts.onStatus && opts.onStatus('connecting'); });
+      conn.onreconnected(function () { opts.onStatus && opts.onStatus('connected'); rejoin(); });
+      conn.onclose(function () { opts.onStatus && opts.onStatus('disconnected'); });
+
+      function rejoin() {
+        if (opts.scope === 'all') conn.invoke('JoinAll');
+        else if (opts.scope === 'campaign') conn.invoke('JoinCampaign', Number(opts.campaignId));
+        else if (opts.scope === 'recipient') conn.invoke('JoinRecipient', Number(opts.recipientId));
+      }
+
+      conn.start().then(function () {
+        opts.onStatus && opts.onStatus('connected');
+        rejoin();
+      }).catch(function (e) {
+        opts.onStatus && opts.onStatus('disconnected');
+        console.error('SignalR start failed', e);
+      });
+
+      return conn;
+    }
+  };
+
+  var DashFeed = {
+    prepend: function (containerId, payload) {
+      var container = document.getElementById(containerId);
+      if (!container) return;
+      var row = document.createElement('div');
+      row.className = 'live-row';
+      row.innerHTML =
+        '<div class="live-time">' + formatTime(payload.at) + '</div>' +
+        '<div class="live-body">' +
+          badge(payload.eventTypeName) +
+          ' <code>' + escape(payload.maskedNtn || '****') + '</code>' +
+          ' <span class="text-secondary small">on ' + escape(payload.campaignCode || '') + '</span>' +
+          (payload.eventValue ? ' <span class="ms-2 text-info small">' + escape(payload.eventValue) + '</span>' : '') +
+          ' <span class="text-secondary small ms-2">· ' + escape(payload.city || '-') + ', ' + escape(payload.country || '-') +
+            ' · ' + escape(payload.browser || '-') + ' · ' + escape(payload.deviceType || '-') + '</span>' +
+        '</div>';
+      container.insertBefore(row, container.firstChild);
+      // Keep the list small so DOM doesn't grow forever on long-lived dashboards.
+      while (container.childElementCount > 200) container.removeChild(container.lastChild);
+    }
+  };
+
+  function badge(text) {
+    return '<span class="badge bg-dark border border-secondary">' + escape(text) + '</span>';
+  }
+
+  function escape(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function formatTime(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toTimeString().slice(0, 8);
+    } catch (_) { return ''; }
+  }
+
+  var DashCharts = {
+    renderVisits: function (canvasId, points) {
+      return new Chart(document.getElementById(canvasId), {
+        type: 'line',
+        data: {
+          labels: points.map(function (p) { return new Date(p.bucket).toLocaleString(); }),
+          datasets: [{ data: points.map(function (p) { return p.value; }), label: 'Visits', borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,.15)', tension: .3, fill: true }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+      });
+    },
+    renderDevices: function (canvasId, rows) {
+      return new Chart(document.getElementById(canvasId), {
+        type: 'doughnut',
+        data: {
+          labels: rows.map(function (r) { return r.deviceType; }),
+          datasets: [{ data: rows.map(function (r) { return r.sessions; }), backgroundColor: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa'] }]
+        },
+        options: { plugins: { legend: { labels: { color: '#e2e8f0' } } } }
+      });
+    },
+    renderGeo: function (tableId, rows) {
+      var tb = document.getElementById(tableId).querySelector('tbody');
+      tb.innerHTML = rows.map(function (r) {
+        return '<tr><td>' + escape(r.country || '-') + '</td><td>' + escape(r.city || '-') + '</td><td class="text-end">' + r.sessions + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="text-secondary text-center small">No data</td></tr>';
+    }
+  };
+
+  g.DashRealtime = DashRealtime;
+  g.DashFeed = DashFeed;
+  g.DashCharts = DashCharts;
+})(window);

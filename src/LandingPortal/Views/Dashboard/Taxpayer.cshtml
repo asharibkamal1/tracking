@@ -1,0 +1,120 @@
+@model TaxpayerAnalytics.Shared.Dtos.TaxpayerDetailDto
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = $"NTN {Model.MaskedNtn}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <a href="/dashboard/taxpayers" class="text-decoration-none small text-secondary">&larr; Taxpayers</a>
+        <h4 class="mb-0 mt-1">NTN <code>@Model.MaskedNtn</code> <span class="text-secondary fs-6">@Model.CampaignCode · @Model.CampaignName</span></h4>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-success" href="/dashboard/export/taxpayer/@Model.RecipientId/excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a class="btn btn-sm btn-outline-danger" href="/dashboard/export/taxpayer/@Model.RecipientId/pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card dash-card h-100"><div class="card-body">
+            <h6 class="text-secondary">Recipient</h6>
+            <table class="table table-sm small mb-0 table-dark table-borderless">
+                <tr><td class="text-secondary">Recipient Id</td><td>@Model.RecipientId</td></tr>
+                <tr><td class="text-secondary">Mobile</td><td>@(Model.MobileMasked ?? "-")</td></tr>
+                <tr><td class="text-secondary">Language</td><td>@(Model.Language ?? "-")</td></tr>
+                <tr><td class="text-secondary">Created</td><td>@Model.CreatedAt.ToString("u")</td></tr>
+                <tr><td class="text-secondary">SMS Sent</td><td>@(Model.SmsSentAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">First Visit</td><td>@(Model.FirstVisitAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">Last Visit</td><td>@(Model.LastVisitAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">Visit Count</td><td>@Model.VisitCount</td></tr>
+                <tr><td class="text-secondary">Sessions</td><td>@Model.Sessions.Count</td></tr>
+            </table>
+        </div></div>
+    </div>
+    <div class="col-md-8">
+        <div class="card dash-card h-100"><div class="card-body">
+            <h6 class="text-secondary mb-3">Live activity</h6>
+            <div id="liveList" class="live-list"></div>
+        </div></div>
+    </div>
+</div>
+
+<h5 class="mb-3">Session timeline</h5>
+
+@if (Model.Sessions.Count == 0)
+{
+    <div class="alert alert-info">No sessions recorded yet for this taxpayer.</div>
+}
+
+@foreach (var s in Model.Sessions)
+{
+    <div class="card dash-card mb-3"><div class="card-body">
+        <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+            <div>
+                <div class="small text-secondary">Session</div>
+                <code class="small">@s.SessionId</code>
+            </div>
+            <div>
+                <div class="small text-secondary">Started</div>
+                <div>@s.StartedAt.ToString("u")</div>
+            </div>
+            <div>
+                <div class="small text-secondary">Ended</div>
+                <div>@(s.EndedAt?.ToString("u") ?? "open")</div>
+            </div>
+            <div>
+                <div class="small text-secondary">Browser / Device</div>
+                <div>@s.Browser on @s.OperatingSystem (@s.DeviceType)</div>
+            </div>
+            <div>
+                <div class="small text-secondary">Geo / IP</div>
+                <div>@(s.City ?? "-"), @(s.Country ?? "-") · <code>@s.IpAddress</code></div>
+            </div>
+            <div class="ms-auto d-flex gap-2">
+                @if (s.IsBot) { <span class="badge bg-warning text-dark">bot</span> }
+                @if (s.IsBounce) { <span class="badge bg-secondary">bounce</span> } else { <span class="badge bg-info text-dark">interacted</span> }
+                @if (s.IsEngaged) { <span class="badge bg-success">engaged</span> }
+                @if (s.RegisterClicked) { <span class="badge bg-success">Register</span> }
+                @if (s.FileClicked) { <span class="badge bg-primary">File</span> }
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-4 small text-secondary mb-3">
+            <span>Duration: <span class="text-light">@s.DurationSeconds s</span></span>
+            <span>Scroll: <span class="text-light">@s.MaxScrollDepth%</span></span>
+            <span>Video: <span class="text-light">@s.VideoWatchSeconds s (@s.VideoWatchPercent%)</span></span>
+            <span>TTI: <span class="text-light">@s.TimeToFirstInteractionMs ms</span></span>
+            <span>Screen: <span class="text-light">@(s.ScreenResolution ?? "-")</span></span>
+            <span>Referrer: <span class="text-light">@(s.Referrer ?? "-")</span></span>
+        </div>
+
+        <div class="timeline">
+            @foreach (var e in s.Events)
+            {
+                <div class="timeline-row">
+                    <div class="timeline-time">@e.EventTime.ToString("HH:mm:ss.fff")</div>
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-text">
+                        <span class="badge bg-dark border border-secondary">@e.EventTypeName</span>
+                        @if (!string.IsNullOrEmpty(e.EventValue)) { <span class="ms-2">@e.EventValue</span> }
+                        @if (e.ScrollDepth.HasValue) { <span class="text-secondary small">  scroll @e.ScrollDepth%</span> }
+                        @if (e.DurationSeconds.HasValue) { <span class="text-secondary small">  @e.DurationSeconds s</span> }
+                    </div>
+                </div>
+            }
+            @if (s.Events.Count == 0)
+            {
+                <div class="text-secondary small">No events recorded for this session.</div>
+            }
+        </div>
+    </div></div>
+}
+
+@section Scripts {
+    <script>
+        DashRealtime.start({ scope: 'recipient', recipientId: @Model.RecipientId }, function (kind, payload) {
+            if (kind === 'liveEvent') DashFeed.prepend('liveList', payload);
+        });
+    </script>
+}

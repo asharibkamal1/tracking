@@ -1,0 +1,86 @@
+@model TaxpayerAnalytics.Shared.Dtos.PagedResult<TaxpayerAnalytics.Shared.Dtos.TaxpayerRowDto>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Taxpayers";
+    var q = ViewBag.Query as TaxpayerAnalytics.Shared.Dtos.DashboardQuery;
+    var search = ViewBag.Search as string;
+    var totalPages = (int)Math.Ceiling(Model.Total / (double)Model.PageSize);
+}
+
+<h4 class="mb-3">Taxpayers</h4>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-4">
+        <label class="form-label small mb-1">Search (masked NTN or mobile)</label>
+        <input class="form-control form-control-sm" name="search" value="@search" placeholder="*****1-1" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-1">Page size</label>
+        <select class="form-select form-select-sm" name="pageSize">
+            @foreach (var n in new[] { 25, 50, 100, 200 })
+            {
+                <option value="@n" selected="@(Model.PageSize == n)">@n</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary" type="submit">Search</button></div>
+    <div class="col-auto text-secondary small">@Model.Total taxpayers · page @Model.Page / @Math.Max(1, totalPages)</div>
+</form>
+
+<div class="card dash-card"><div class="card-body p-0">
+    <div class="table-responsive">
+        <table class="table table-dark table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Campaign</th>
+                    <th>NTN</th>
+                    <th>Mobile</th>
+                    <th class="text-end">Visits</th>
+                    <th class="text-end">Last seen</th>
+                    <th class="text-end">Duration</th>
+                    <th class="text-end">Scroll</th>
+                    <th class="text-end">Video %</th>
+                    <th>Clicks</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td><span class="badge bg-secondary">@r.CampaignCode</span></td>
+                        <td><code>@r.MaskedNtn</code></td>
+                        <td><small class="text-secondary">@(r.MobileMasked ?? "-")</small></td>
+                        <td class="text-end">@r.VisitCount</td>
+                        <td class="text-end small">@(r.LastVisitAt?.ToString("u") ?? "-")</td>
+                        <td class="text-end">@r.TotalDurationSec s</td>
+                        <td class="text-end">@r.MaxScrollDepth%</td>
+                        <td class="text-end">@r.VideoWatchPercent%</td>
+                        <td>
+                            @if (r.RegisterClicked) { <span class="badge bg-success">R</span> }
+                            @if (r.FileClicked) { <span class="badge bg-primary">F</span> }
+                            @if (r.EverBot) { <span class="badge bg-warning text-dark">bot</span> }
+                        </td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-light" href="/dashboard/taxpayers/@r.RecipientId">View</a></td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="10" class="text-center text-secondary py-4">No taxpayers match this filter.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div></div>
+
+@if (totalPages > 1)
+{
+    <nav class="mt-3"><ul class="pagination pagination-sm">
+        @for (var p = 1; p <= totalPages; p++)
+        {
+            <li class="page-item @(p == Model.Page ? "active" : "")">
+                <a class="page-link" href="?page=@p&pageSize=@Model.PageSize@(string.IsNullOrEmpty(search) ? "" : "&search=" + Uri.EscapeDataString(search))">@p</a>
+            </li>
+        }
+    </ul></nav>
+}

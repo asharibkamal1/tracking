@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TaxpayerAnalytics.LandingPortal.Repositories;
 using TaxpayerAnalytics.LandingPortal.Services;
+using TaxpayerAnalytics.LandingPortal.Services.Dashboard;
 using TaxpayerAnalytics.Shared.Dtos;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
@@ -13,6 +15,8 @@ namespace TaxpayerAnalytics.LandingPortal.Controllers;
 public sealed class EventsController(
     IEventIngestionQueue queue,
     IEventRepository events,
+    AnalyticsDbContext db,
+    IRealtimeNotifier realtime,
     ILogger<EventsController> logger) : ControllerBase
 {
     [HttpPost("batch")]
@@ -108,7 +112,55 @@ public sealed class EventsController(
         }, ct);
 
         logger.LogDebug("Batch session={Sid} accepted={A} rejected={R}", sessionId, accepted, rejected);
+
+        // Live broadcast meaningful events (skip Heartbeat / scroll-only noise) so the
+        // dashboard feed updates within ~1s. Resolve names + masked NTN once per batch.
+        await BroadcastEventsAsync(req.Events, session, ct);
+
         return Ok(new TrackResponse { Accepted = accepted, Rejected = rejected });
+    }
+
+    private async Task BroadcastEventsAsync(List<TrackEventDto> incoming, UserSession session, CancellationToken ct)
+    {
+        var broadcastable = incoming
+            .Where(e => e.EventType is EventType.PageOpen
+                                    or EventType.PageClose
+                                    or EventType.VideoPlay
+                                    or EventType.VideoComplete
+                                    or EventType.RegisterClick
+                                    or EventType.FileClick
+                                    or EventType.CtaClick)
+            .ToList();
+        if (broadcastable.Count == 0) return;
+
+        var maskedNtn = await db.Recipients.AsNoTracking()
+            .Where(r => r.RecipientId == session.RecipientId)
+            .Select(r => r.MaskedNtn)
+            .FirstOrDefaultAsync(ct) ?? "****";
+        var campaignCode = await db.Campaigns.AsNoTracking()
+            .Where(c => c.CampaignId == session.CampaignId)
+            .Select(c => c.CampaignCode)
+            .FirstOrDefaultAsync(ct) ?? string.Empty;
+
+        foreach (var dto in broadcastable)
+        {
+            _ = realtime.PushEventAsync(new LiveEventDto
+            {
+                Kind = "event",
+                At = dto.ClientEventTime?.ToUniversalTime() ?? DateTime.UtcNow,
+                SessionId = session.SessionId,
+                CampaignId = session.CampaignId,
+                CampaignCode = campaignCode,
+                RecipientId = session.RecipientId,
+                MaskedNtn = maskedNtn,
+                EventTypeName = dto.EventType.ToString(),
+                EventValue = dto.EventValue,
+                Browser = session.Browser,
+                DeviceType = session.DeviceType.ToString(),
+                Country = session.Country,
+                City = session.City
+            }, ct);
+        }
     }
 
     [HttpPost("heartbeat")]

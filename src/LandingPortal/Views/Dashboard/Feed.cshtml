@@ -1,0 +1,47 @@
+@model List<TaxpayerAnalytics.Shared.Dtos.LiveEventDto>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Live Feed";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-broadcast"></i> Live Activity Feed</h4>
+    <div class="text-secondary small"><span id="feedStatus" class="text-warning">connecting…</span></div>
+</div>
+
+<div class="card dash-card"><div class="card-body">
+    <div id="liveList" class="live-list">
+        @foreach (var e in Model)
+        {
+            <div class="live-row">
+                <div class="live-time">@e.At.ToString("HH:mm:ss")</div>
+                <div class="live-body">
+                    <span class="badge bg-dark border border-secondary">@e.EventTypeName</span>
+                    <span class="ms-2"><code>@e.MaskedNtn</code></span>
+                    <span class="text-secondary small">on @e.CampaignCode</span>
+                    @if (!string.IsNullOrEmpty(e.EventValue))
+                    {
+                        <span class="ms-2 text-info small">@e.EventValue</span>
+                    }
+                    <span class="text-secondary small ms-2">· @(e.City ?? "-"), @(e.Country ?? "-") · @e.Browser · @e.DeviceType</span>
+                </div>
+            </div>
+        }
+        @if (Model.Count == 0)
+        {
+            <div class="text-secondary small">Nothing yet. Open a landing page in another tab to see events stream in.</div>
+        }
+    </div>
+</div></div>
+
+@section Scripts {
+    <script>
+        DashRealtime.start({ scope: 'all', onStatus: function (s) {
+            var el = document.getElementById('feedStatus');
+            el.className = (s === 'connected') ? 'text-success' : (s === 'connecting' ? 'text-warning' : 'text-danger');
+            el.textContent = s;
+        }}, function (kind, payload) {
+            if (kind === 'liveEvent') DashFeed.prepend('liveList', payload);
+        });
+    </script>
+}

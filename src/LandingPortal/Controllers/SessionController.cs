@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TaxpayerAnalytics.LandingPortal.Repositories;
 using TaxpayerAnalytics.LandingPortal.Services;
+using TaxpayerAnalytics.LandingPortal.Services.Dashboard;
 using TaxpayerAnalytics.Shared.Dtos;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
@@ -16,6 +17,7 @@ public sealed class SessionController(
     IUserAgentParser uaParser,
     IBotDetector bot,
     IEventIngestionQueue queue,
+    IRealtimeNotifier realtime,
     ILogger<SessionController> logger) : ControllerBase
 {
     [HttpPost("start")]
@@ -95,6 +97,26 @@ public sealed class SessionController(
             "Session {Sid} started recipient={Rid} campaign={Cid} bot={Bot} browser={Br} device={Dev}",
             session.SessionId, recipient.RecipientId, recipient.CampaignId,
             botResult.IsBot, uaInfo.Browser, uaInfo.DeviceType);
+
+        if (!botResult.IsBot)
+        {
+            // Fire-and-forget — failure to push live doesn't fail the request.
+            _ = realtime.PushEventAsync(new LiveEventDto
+            {
+                Kind = "session",
+                At = now,
+                SessionId = session.SessionId,
+                CampaignId = recipient.CampaignId,
+                CampaignCode = recipient.Campaign?.CampaignCode ?? string.Empty,
+                RecipientId = recipient.RecipientId,
+                MaskedNtn = recipient.MaskedNtn ?? "****",
+                EventTypeName = nameof(EventType.PageOpen),
+                Browser = uaInfo.Browser,
+                DeviceType = uaInfo.DeviceType.ToString(),
+                Country = geoInfo.Country,
+                City = geoInfo.City
+            });
+        }
 
         return Ok(new StartSessionResponse
         {

@@ -1,0 +1,90 @@
+@model List<TaxpayerAnalytics.Shared.Dtos.CampaignOverviewDto>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Overview";
+    var q = ViewBag.Query as TaxpayerAnalytics.Shared.Dtos.DashboardQuery;
+    var qs = "";
+    if (q is not null)
+    {
+        var parts = new List<string>();
+        if (q.From.HasValue) parts.Add($"from={q.From.Value:yyyy-MM-dd}");
+        if (q.To.HasValue) parts.Add($"to={q.To.Value:yyyy-MM-dd}");
+        if (!q.ExcludeBots) parts.Add("excludeBots=false");
+        qs = parts.Count == 0 ? "" : "?" + string.Join("&", parts);
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h4 class="mb-0">Campaign Overview</h4>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-success" href="/dashboard/export/excel@(qs)"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a class="btn btn-sm btn-outline-danger" href="/dashboard/export/pdf@(qs)"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    </div>
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label small mb-1">From</label>
+        <input type="date" class="form-control form-control-sm" name="From" value="@(q?.From?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-1">To</label>
+        <input type="date" class="form-control form-control-sm" name="To" value="@(q?.To?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-auto form-check ms-2 mt-3">
+        <input type="checkbox" class="form-check-input" id="botInc" name="ExcludeBots" value="false" @(q is not null && !q.ExcludeBots ? "checked" : "") />
+        <label class="form-check-label small" for="botInc">Include bots</label>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+    </div>
+</form>
+
+<div class="row g-3">
+    @foreach (var c in Model)
+    {
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card dash-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0">@c.CampaignCode</h6>
+                        <span class="badge bg-secondary">@c.PageTemplate</span>
+                    </div>
+                    <div class="text-secondary small mb-3">@c.Name</div>
+                    <div class="d-flex align-items-baseline mb-2 gap-2">
+                        <div class="big-num text-success">@c.ActiveUsersNow</div>
+                        <div class="text-secondary small">active now</div>
+                    </div>
+                    <table class="table table-sm table-borderless small mb-0">
+                        <tr><td class="text-secondary">SMS Sent</td><td class="text-end">@c.TotalSmsSent.ToString("N0")</td></tr>
+                        <tr><td class="text-secondary">Visits</td><td class="text-end">@c.TotalVisits.ToString("N0")</td></tr>
+                        <tr><td class="text-secondary">Unique</td><td class="text-end">@c.UniqueVisitors.ToString("N0")</td></tr>
+                        <tr><td class="text-secondary">CTR</td><td class="text-end">@c.ClickThroughRatePct.ToString("F2")%</td></tr>
+                        <tr><td class="text-secondary">Avg Duration</td><td class="text-end">@c.AvgSessionDurationSec.ToString("F1")s</td></tr>
+                        <tr><td class="text-secondary">Avg Scroll</td><td class="text-end">@c.AvgScrollDepthPct.ToString("F1")%</td></tr>
+                        <tr><td class="text-secondary">Register Clicks</td><td class="text-end">@c.RegisterClicks.ToString("N0")</td></tr>
+                        <tr><td class="text-secondary">File Clicks</td><td class="text-end">@c.FileClicks.ToString("N0")</td></tr>
+                        <tr><td class="text-secondary">Bounce</td><td class="text-end">@c.BounceRatePct.ToString("F2")%</td></tr>
+                        <tr><td class="text-secondary">Video Done</td><td class="text-end">@c.VideoCompletions / @c.VideoStarts</td></tr>
+                    </table>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <a class="btn btn-sm btn-outline-primary" href="/dashboard/campaign/@c.CampaignId">Drill down</a>
+                        <span class="text-success small" data-active-cid="@c.CampaignId">●</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // SignalR realtime: refresh active-user dots when push arrives.
+        DashRealtime.start({ scope: 'all' }, function (kind, payload) {
+            if (kind === 'activeUsers') {
+                var el = document.querySelector('[data-active-cid="' + payload.campaignId + '"]');
+                if (el) el.textContent = '● ' + payload.active + ' live';
+            }
+        });
+    </script>
+}

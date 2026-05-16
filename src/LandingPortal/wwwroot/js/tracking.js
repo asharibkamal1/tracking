@@ -30,6 +30,8 @@
     Bounce: 30, Engagement: 50, Error: 90
   };
 
+  // apiBaseUrl defaults to '' which makes every request same-origin — that's the
+  // happy path when the SDK is served from the same host as the tracking API.
   var config = {
     apiBaseUrl: '',
     token: '',
@@ -37,7 +39,7 @@
     heartbeatSeconds: 10,
     batchMaxSize: 20,
     batchMaxWaitMs: 2000,
-    debug: false
+    debug: true
   };
 
   var state = {
@@ -265,7 +267,7 @@
 
   function init(opts) {
     Object.assign(config, opts || {});
-    if (!config.apiBaseUrl || !config.token) { log('missing apiBaseUrl/token'); return; }
+    if (!config.token) { log('missing token'); return; }
     startSession(function () {
       wireScroll();
       wireVideo();

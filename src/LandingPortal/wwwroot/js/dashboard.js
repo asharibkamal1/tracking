@@ -105,7 +105,42 @@
     }
   };
 
+  /**
+   * Animates a target integer count from 0 to its rendered value.
+   * Usage: <span data-count-up>1234</span>  — call DashAnim.countUp() once on DOM ready.
+   */
+  var DashAnim = {
+    countUp: function (selector) {
+      var nodes = document.querySelectorAll(selector || '[data-count-up]');
+      nodes.forEach(function (el) {
+        var raw = el.textContent.trim();
+        // Preserve any non-digit prefix/suffix (e.g. "75.00%" or "$1,234").
+        var match = raw.match(/^([^\d-]*)(-?\d+(?:[\.,]\d+)?)(.*)$/);
+        if (!match) return;
+        var prefix = match[1], target = parseFloat(match[2].replace(/,/g, '')), suffix = match[3];
+        if (!isFinite(target)) return;
+        var isFloat = match[2].indexOf('.') !== -1;
+        var duration = 900;
+        var start = performance.now();
+        function tick(now) {
+          var t = Math.min(1, (now - start) / duration);
+          var eased = 1 - Math.pow(1 - t, 3);   // easeOutCubic
+          var v = target * eased;
+          el.textContent = prefix + (isFloat ? v.toFixed(1) : Math.round(v).toLocaleString()) + suffix;
+          if (t < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+    }
+  };
+
+  // Run count-up on any decorated cell after DOM ready.
+  document.addEventListener('DOMContentLoaded', function () {
+    DashAnim.countUp();
+  });
+
   g.DashRealtime = DashRealtime;
   g.DashFeed = DashFeed;
   g.DashCharts = DashCharts;
+  g.DashAnim = DashAnim;
 })(window);

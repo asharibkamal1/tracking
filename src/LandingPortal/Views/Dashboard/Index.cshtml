@@ -12,17 +12,38 @@
         if (!q.ExcludeBots) parts.Add("excludeBots=false");
         qs = parts.Count == 0 ? "" : "?" + string.Join("&", parts);
     }
+
+    string TemplateIcon(string t) => t switch
+    {
+        "Index" => "bi-info-circle-fill",
+        "Enforcement" => "bi-shield-fill-exclamation",
+        "Combined" => "bi-layers-fill",
+        "CivicDuty" => "bi-flag-fill",
+        _ => "bi-megaphone-fill"
+    };
+
+    // Roll-up across all campaigns for the top stat strip
+    var totalRecipients = Model.Sum(c => c.TotalRecipients);
+    var totalVisits = Model.Sum(c => c.TotalVisits);
+    var totalUnique = Model.Sum(c => c.UniqueVisitors);
+    var totalRegister = Model.Sum(c => c.RegisterClicks);
+    var totalFile = Model.Sum(c => c.FileClicks);
+    var totalActive = Model.Sum(c => c.ActiveUsersNow);
+    var blendedCtr = totalRecipients == 0 ? 0 : Math.Round(100.0 * totalUnique / Math.Max(1, totalRecipients), 2);
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h4 class="mb-0">Campaign Overview</h4>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 fade-in">
+    <div>
+        <h3 class="mb-1 fw-bold">Campaign Overview</h3>
+        <div class="text-secondary small">Real-time taxpayer behavioural analytics</div>
+    </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-success" href="/dashboard/export/excel@(qs)"><i class="bi bi-file-earmark-excel"></i> Excel</a>
-        <a class="btn btn-sm btn-outline-danger" href="/dashboard/export/pdf@(qs)"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+        <a class="btn btn-sm btn-outline-success" href="/dashboard/export/excel@(qs)"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+        <a class="btn btn-sm btn-outline-danger" href="/dashboard/export/pdf@(qs)"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
     </div>
 </div>
 
-<form method="get" class="row g-2 align-items-end mb-4">
+<form method="get" class="row g-2 align-items-end mb-4 fade-in d1">
     <div class="col-auto">
         <label class="form-label small mb-1">From</label>
         <input type="date" class="form-control form-control-sm" name="From" value="@(q?.From?.ToString("yyyy-MM-dd"))" />
@@ -35,41 +56,82 @@
         <input type="checkbox" class="form-check-input" id="botInc" name="ExcludeBots" value="false" @(q is not null && !q.ExcludeBots ? "checked" : "") />
         <label class="form-check-label small" for="botInc">Include bots</label>
     </div>
-    <div class="col-auto">
-        <button class="btn btn-sm btn-primary" type="submit">Apply</button>
-    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button></div>
 </form>
 
+<div class="stat-strip fade-in d1">
+    <div class="stat-tile t-green">
+        <i class="bi bi-activity stat-icon"></i>
+        <div class="stat-label">Active Now <span class="pulse-dot ms-1"></span></div>
+        <div class="stat-value" data-count-up>@totalActive</div>
+    </div>
+    <div class="stat-tile t-blue">
+        <i class="bi bi-eye stat-icon"></i>
+        <div class="stat-label">Total Visits</div>
+        <div class="stat-value" data-count-up>@totalVisits</div>
+    </div>
+    <div class="stat-tile t-purple">
+        <i class="bi bi-people-fill stat-icon"></i>
+        <div class="stat-label">Unique Visitors</div>
+        <div class="stat-value" data-count-up>@totalUnique</div>
+    </div>
+    <div class="stat-tile t-orange">
+        <i class="bi bi-envelope-paper stat-icon"></i>
+        <div class="stat-label">Recipients</div>
+        <div class="stat-value" data-count-up>@totalRecipients</div>
+    </div>
+    <div class="stat-tile t-pink">
+        <i class="bi bi-graph-up-arrow stat-icon"></i>
+        <div class="stat-label">Blended CTR</div>
+        <div class="stat-value" data-count-up>@blendedCtr.ToString("F2")%</div>
+    </div>
+    <div class="stat-tile t-blue">
+        <i class="bi bi-hand-index-thumb-fill stat-icon"></i>
+        <div class="stat-label">Total Clicks</div>
+        <div class="stat-value" data-count-up>@(totalRegister + totalFile)</div>
+    </div>
+</div>
+
 <div class="row g-3">
+    @{ int delay = 2; }
     @foreach (var c in Model)
     {
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card dash-card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="mb-0">@c.CampaignCode</h6>
-                        <span class="badge bg-secondary">@c.PageTemplate</span>
+        var tpl = c.PageTemplate?.ToLower() ?? "index";
+        <div class="col-12 col-md-6 col-xl-3 fade-in d@(Math.Min(delay++, 6))">
+            <div class="dash-card campaign-card tpl-@tpl h-100">
+                <div class="campaign-head d-flex align-items-start gap-3">
+                    <div class="campaign-icon"><i class="bi @TemplateIcon(c.PageTemplate)"></i></div>
+                    <div class="flex-grow-1">
+                        <div class="campaign-code gradient-text">@c.CampaignCode</div>
+                        <div class="campaign-name">@c.Name</div>
                     </div>
-                    <div class="text-secondary small mb-3">@c.Name</div>
-                    <div class="d-flex align-items-baseline mb-2 gap-2">
-                        <div class="big-num text-success">@c.ActiveUsersNow</div>
-                        <div class="text-secondary small">active now</div>
+                </div>
+                <div class="campaign-body">
+                    <div class="d-flex align-items-baseline gap-2 mb-3">
+                        <div class="big-num gradient-text" data-count-up>@c.ActiveUsersNow</div>
+                        <div class="big-num-sub">active <span class="pulse-dot ms-1"></span></div>
                     </div>
-                    <table class="table table-sm table-borderless small mb-0">
-                        <tr><td class="text-secondary">SMS Sent</td><td class="text-end">@c.TotalSmsSent.ToString("N0")</td></tr>
-                        <tr><td class="text-secondary">Visits</td><td class="text-end">@c.TotalVisits.ToString("N0")</td></tr>
-                        <tr><td class="text-secondary">Unique</td><td class="text-end">@c.UniqueVisitors.ToString("N0")</td></tr>
-                        <tr><td class="text-secondary">CTR</td><td class="text-end">@c.ClickThroughRatePct.ToString("F2")%</td></tr>
-                        <tr><td class="text-secondary">Avg Duration</td><td class="text-end">@c.AvgSessionDurationSec.ToString("F1")s</td></tr>
-                        <tr><td class="text-secondary">Avg Scroll</td><td class="text-end">@c.AvgScrollDepthPct.ToString("F1")%</td></tr>
-                        <tr><td class="text-secondary">Register Clicks</td><td class="text-end">@c.RegisterClicks.ToString("N0")</td></tr>
-                        <tr><td class="text-secondary">File Clicks</td><td class="text-end">@c.FileClicks.ToString("N0")</td></tr>
-                        <tr><td class="text-secondary">Bounce</td><td class="text-end">@c.BounceRatePct.ToString("F2")%</td></tr>
-                        <tr><td class="text-secondary">Video Done</td><td class="text-end">@c.VideoCompletions / @c.VideoStarts</td></tr>
-                    </table>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <a class="btn btn-sm btn-outline-primary" href="/dashboard/campaign/@c.CampaignId">Drill down</a>
-                        <span class="text-success small" data-active-cid="@c.CampaignId">●</span>
+
+                    <div class="kpi-grid">
+                        <div class="kpi-cell"><span class="kpi-label">SMS</span><span class="kpi-value" data-count-up>@c.TotalSmsSent</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">Visits</span><span class="kpi-value" data-count-up>@c.TotalVisits</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">Unique</span><span class="kpi-value" data-count-up>@c.UniqueVisitors</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">CTR</span><span class="kpi-value" data-count-up>@c.ClickThroughRatePct.ToString("F2")%</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">Avg Dur</span><span class="kpi-value" data-count-up>@c.AvgSessionDurationSec.ToString("F1")s</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">Avg Scroll</span><span class="kpi-value" data-count-up>@c.AvgScrollDepthPct.ToString("F1")%</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">Register</span><span class="kpi-value" data-count-up>@c.RegisterClicks</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">File</span><span class="kpi-value" data-count-up>@c.FileClicks</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">Bounce</span><span class="kpi-value" data-count-up>@c.BounceRatePct.ToString("F2")%</span></div>
+                        <div class="kpi-cell"><span class="kpi-label">Video</span><span class="kpi-value">@c.VideoCompletions/@c.VideoStarts</span></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2" style="border-top:1px solid var(--border);">
+                        <a class="btn btn-sm btn-primary" href="/dashboard/campaign/@c.CampaignId">
+                            <i class="bi bi-arrow-right-circle me-1"></i>Drill down
+                        </a>
+                        <span class="text-success small fw-semibold" data-active-cid="@c.CampaignId">
+                            <span class="pulse-dot me-1"></span>@c.ActiveUsersNow live
+                        </span>
                     </div>
                 </div>
             </div>
@@ -79,11 +141,11 @@
 
 @section Scripts {
     <script>
-        // SignalR realtime: refresh active-user dots when push arrives.
+        // SignalR realtime: refresh active-user counter when push arrives.
         DashRealtime.start({ scope: 'all' }, function (kind, payload) {
             if (kind === 'activeUsers') {
                 var el = document.querySelector('[data-active-cid="' + payload.campaignId + '"]');
-                if (el) el.textContent = '● ' + payload.active + ' live';
+                if (el) el.innerHTML = '<span class="pulse-dot me-1"></span>' + payload.active + ' live';
             }
         });
     </script>

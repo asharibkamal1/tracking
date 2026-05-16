@@ -4,43 +4,46 @@
     ViewData["Title"] = $"NTN {Model.MaskedNtn}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 fade-in">
     <div>
-        <a href="/dashboard/taxpayers" class="text-decoration-none small text-secondary">&larr; Taxpayers</a>
-        <h4 class="mb-0 mt-1">NTN <code>@Model.MaskedNtn</code> <span class="text-secondary fs-6">@Model.CampaignCode · @Model.CampaignName</span></h4>
+        <a href="/dashboard/taxpayers" class="text-decoration-none small text-secondary"><i class="bi bi-arrow-left me-1"></i>Taxpayers</a>
+        <h3 class="mb-0 mt-1 fw-bold">
+            <i class="bi bi-person-vcard me-2"></i>NTN <code>@Model.MaskedNtn</code>
+            <span class="text-secondary fs-6 ms-2">@Model.CampaignCode · @Model.CampaignName</span>
+        </h3>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-success" href="/dashboard/export/taxpayer/@Model.RecipientId/excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
-        <a class="btn btn-sm btn-outline-danger" href="/dashboard/export/taxpayer/@Model.RecipientId/pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+        <a class="btn btn-sm btn-outline-success" href="/dashboard/export/taxpayer/@Model.RecipientId/excel"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+        <a class="btn btn-sm btn-outline-danger" href="/dashboard/export/taxpayer/@Model.RecipientId/pdf"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4 fade-in d1">
     <div class="col-md-4">
-        <div class="card dash-card h-100"><div class="card-body">
-            <h6 class="text-secondary">Recipient</h6>
-            <table class="table table-sm small mb-0 table-dark table-borderless">
-                <tr><td class="text-secondary">Recipient Id</td><td>@Model.RecipientId</td></tr>
-                <tr><td class="text-secondary">Mobile</td><td>@(Model.MobileMasked ?? "-")</td></tr>
-                <tr><td class="text-secondary">Language</td><td>@(Model.Language ?? "-")</td></tr>
-                <tr><td class="text-secondary">Created</td><td>@Model.CreatedAt.ToString("u")</td></tr>
-                <tr><td class="text-secondary">SMS Sent</td><td>@(Model.SmsSentAt?.ToString("u") ?? "-")</td></tr>
-                <tr><td class="text-secondary">First Visit</td><td>@(Model.FirstVisitAt?.ToString("u") ?? "-")</td></tr>
-                <tr><td class="text-secondary">Last Visit</td><td>@(Model.LastVisitAt?.ToString("u") ?? "-")</td></tr>
-                <tr><td class="text-secondary">Visit Count</td><td>@Model.VisitCount</td></tr>
-                <tr><td class="text-secondary">Sessions</td><td>@Model.Sessions.Count</td></tr>
+        <div class="dash-card h-100"><div class="card-body p-4">
+            <h6 class="mb-3"><i class="bi bi-person-circle me-1"></i>Recipient</h6>
+            <table class="table table-sm small mb-0 table-borderless">
+                <tr><td class="text-secondary">Recipient Id</td><td class="text-end">@Model.RecipientId</td></tr>
+                <tr><td class="text-secondary">Mobile</td><td class="text-end">@(Model.MobileMasked ?? "-")</td></tr>
+                <tr><td class="text-secondary">Language</td><td class="text-end">@(Model.Language ?? "-")</td></tr>
+                <tr><td class="text-secondary">Created</td><td class="text-end small">@Model.CreatedAt.ToString("u")</td></tr>
+                <tr><td class="text-secondary">SMS Sent</td><td class="text-end small">@(Model.SmsSentAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">First Visit</td><td class="text-end small">@(Model.FirstVisitAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">Last Visit</td><td class="text-end small">@(Model.LastVisitAt?.ToString("u") ?? "-")</td></tr>
+                <tr><td class="text-secondary">Visit Count</td><td class="text-end" data-count-up>@Model.VisitCount</td></tr>
+                <tr><td class="text-secondary">Sessions</td><td class="text-end" data-count-up>@Model.Sessions.Count</td></tr>
             </table>
         </div></div>
     </div>
     <div class="col-md-8">
-        <div class="card dash-card h-100"><div class="card-body">
-            <h6 class="text-secondary mb-3">Live activity</h6>
+        <div class="dash-card h-100"><div class="card-body p-4">
+            <h6 class="mb-3"><i class="bi bi-broadcast me-1"></i>Live activity</h6>
             <div id="liveList" class="live-list"></div>
         </div></div>
     </div>
 </div>
 
-<h5 class="mb-3">Session timeline</h5>
+<h5 class="mb-3 fw-bold fade-in d2"><i class="bi bi-clock-history me-2"></i>Session timeline</h5>
 
 @if (Model.Sessions.Count == 0)
 {
@@ -49,7 +52,7 @@
 
 @foreach (var s in Model.Sessions)
 {
-    <div class="card dash-card mb-3"><div class="card-body">
+    <div class="dash-card mb-3 fade-in d3"><div class="card-body p-4">
         <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
             <div>
                 <div class="small text-secondary">Session</div>

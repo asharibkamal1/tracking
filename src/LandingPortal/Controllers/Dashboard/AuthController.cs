@@ -10,15 +10,17 @@ namespace TaxpayerAnalytics.LandingPortal.Controllers.Dashboard;
 [Route("dashboard")]
 public sealed class AuthController(IOptions<DashboardOptions> opt) : Controller
 {
+    private const string LoginView = "~/Views/Dashboard/Login.cshtml";
+
     [HttpGet("login")]
     public IActionResult Login(string? returnUrl = null) =>
-        View(new LoginViewModel { ReturnUrl = returnUrl });
+        View(LoginView, new LoginViewModel { ReturnUrl = returnUrl });
 
     [HttpPost("login")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid) return View(LoginView, model);
 
         var admin = opt.Value.Admin;
         var ok = string.Equals(model.Username, admin.Username, StringComparison.Ordinal)
@@ -27,7 +29,7 @@ public sealed class AuthController(IOptions<DashboardOptions> opt) : Controller
         {
             // Generic message — don't leak which field was wrong.
             model.Error = "Invalid username or password.";
-            return View(model);
+            return View(LoginView, model);
         }
 
         var identity = new ClaimsIdentity(

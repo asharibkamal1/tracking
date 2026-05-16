@@ -9,6 +9,13 @@ public sealed class SecurityOptions
     public string NtnHashPepper { get; set; } = default!;
     public int RateLimitPerMinute { get; set; } = 120;
     public int SessionMaxIdleSeconds { get; set; } = 600;
+
+    /// <summary>
+    /// If the same recipient lands again within this window, we reuse the existing
+    /// UserSession instead of creating a new one. Stops a page refresh from
+    /// inflating VisitCount / ActiveUsers / BounceRate.
+    /// </summary>
+    public int SessionContinuationMinutes { get; set; } = 5;
 }
 
 public sealed class GeoIpOptions

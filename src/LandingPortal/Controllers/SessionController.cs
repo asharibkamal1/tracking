@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using TaxpayerAnalytics.LandingPortal.Repositories;
 using TaxpayerAnalytics.LandingPortal.Services;
 using TaxpayerAnalytics.LandingPortal.Services.Dashboard;
+using TaxpayerAnalytics.Shared.Configuration;
 using TaxpayerAnalytics.Shared.Dtos;
 using TaxpayerAnalytics.Shared.Entities;
 using TaxpayerAnalytics.Shared.Enums;
@@ -18,6 +20,7 @@ public sealed class SessionController(
     IBotDetector bot,
     IEventIngestionQueue queue,
     IRealtimeNotifier realtime,
+    IOptions<SecurityOptions> securityOpt,
     ILogger<SessionController> logger) : ControllerBase
 {
     [HttpPost("start")]
@@ -43,6 +46,59 @@ public sealed class SessionController(
         var uaInfo = uaParser.Parse(ua);
         var ip = ResolveClientIp();
         var geoInfo = geo.Lookup(ip);
+        var now = DateTime.UtcNow;
+
+        // Session continuation: if this recipient was active within the configured
+        // window (refresh / quick reopen), reuse their session instead of inflating
+        // VisitCount and ActiveUsers. Bot sessions are never reused so a bot can't
+        // hijack a legitimate session.
+        if (!botResult.IsBot)
+        {
+            var window = TimeSpan.FromMinutes(Math.Max(1, securityOpt.Value.SessionContinuationMinutes));
+            var existing = await sessions.GetRecentSessionForRecipientAsync(recipient.RecipientId, now - window, ct);
+            if (existing is not null)
+            {
+                await sessions.TouchSessionAsync(existing.SessionId, now, ct);
+
+                queue.TryEnqueue(new EventLog
+                {
+                    SessionId = existing.SessionId,
+                    RecipientId = recipient.RecipientId,
+                    CampaignId = recipient.CampaignId,
+                    EventType = EventType.PageOpen,
+                    EventTime = now,
+                    PageUrl = req.PageUrl,
+                    EventValue = "continuation"
+                });
+
+                logger.LogInformation("Session {Sid} continued for recipient={Rid} (age {Age:F0}s)",
+                    existing.SessionId, recipient.RecipientId, (now - existing.StartedAt).TotalSeconds);
+
+                _ = realtime.PushEventAsync(new LiveEventDto
+                {
+                    Kind = "event",
+                    At = now,
+                    SessionId = existing.SessionId,
+                    CampaignId = recipient.CampaignId,
+                    CampaignCode = recipient.Campaign?.CampaignCode ?? string.Empty,
+                    RecipientId = recipient.RecipientId,
+                    MaskedNtn = recipient.MaskedNtn ?? "****",
+                    EventTypeName = nameof(EventType.PageOpen),
+                    EventValue = "refresh",
+                    Browser = existing.Browser,
+                    DeviceType = existing.DeviceType.ToString(),
+                    Country = existing.Country,
+                    City = existing.City
+                });
+
+                return Ok(new StartSessionResponse
+                {
+                    SessionId = existing.SessionId,
+                    CampaignId = existing.CampaignId,
+                    IsBot = false
+                });
+            }
+        }
 
         // GeoIP databases don't carry data for loopback addresses (::1, 127.0.0.1) and
         // most local subnets. Tag those explicitly so the columns aren't NULL in dev —
@@ -52,7 +108,6 @@ public sealed class SessionController(
             geoInfo = new Services.GeoLookupResult("Local", "Localhost", "Local", null, null);
         }
 
-        var now = DateTime.UtcNow;
         var session = new UserSession
         {
             SessionId = Guid.NewGuid(),

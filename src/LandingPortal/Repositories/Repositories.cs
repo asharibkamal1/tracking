@@ -6,8 +6,10 @@ namespace TaxpayerAnalytics.LandingPortal.Repositories;
 public interface ISessionRepository
 {
     Task<TaxpayerRecipient?> GetRecipientByTokenAsync(string token, CancellationToken ct);
+    Task<UserSession?> GetRecentSessionForRecipientAsync(long recipientId, DateTime since, CancellationToken ct);
     Task<UserSession> CreateSessionAsync(UserSession session, CancellationToken ct);
     Task IncrementVisitAsync(long recipientId, DateTime visitAt, CancellationToken ct);
+    Task TouchSessionAsync(Guid sessionId, DateTime at, CancellationToken ct);
 }
 
 public interface IEventRepository
@@ -22,6 +24,14 @@ public sealed class SessionRepository(AnalyticsDbContext db) : ISessionRepositor
         db.Recipients
             .Include(r => r.Campaign)
             .FirstOrDefaultAsync(r => r.TrackingToken == token, ct);
+
+    public Task<UserSession?> GetRecentSessionForRecipientAsync(long recipientId, DateTime since, CancellationToken ct) =>
+        db.Sessions
+            .Where(s => s.RecipientId == recipientId
+                     && s.LastHeartbeatAt >= since
+                     && !s.IsBot)
+            .OrderByDescending(s => s.LastHeartbeatAt)
+            .FirstOrDefaultAsync(ct);
 
     public async Task<UserSession> CreateSessionAsync(UserSession session, CancellationToken ct)
     {
@@ -38,6 +48,13 @@ public sealed class SessionRepository(AnalyticsDbContext db) : ISessionRepositor
                 .SetProperty(r => r.VisitCount, r => r.VisitCount + 1)
                 .SetProperty(r => r.LastVisitAt, visitAt)
                 .SetProperty(r => r.FirstVisitAt, r => r.FirstVisitAt ?? visitAt), ct);
+    }
+
+    public async Task TouchSessionAsync(Guid sessionId, DateTime at, CancellationToken ct)
+    {
+        await db.Sessions
+            .Where(s => s.SessionId == sessionId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.LastHeartbeatAt, at), ct);
     }
 }
 

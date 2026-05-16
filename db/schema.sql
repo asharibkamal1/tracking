@@ -129,6 +129,7 @@ BEGIN
         RecipientId      BIGINT          NOT NULL,
         CampaignId       BIGINT          NOT NULL,
         EventType        INT             NOT NULL,
+        EventTypeName    NVARCHAR(32)    NULL,
         EventValue       NVARCHAR(512)   NULL,
         DurationSeconds  INT             NULL,
         ScrollDepth      INT             NULL,
@@ -147,6 +148,41 @@ BEGIN
     CREATE INDEX IX_Event_ClientEventId   ON dbo.EventLog(ClientEventId)
         WHERE ClientEventId IS NOT NULL;
 END
+GO
+
+-- =============================================================================
+-- Idempotent column additions (for databases created before a column existed).
+-- =============================================================================
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.EventLog') AND name = 'EventTypeName')
+BEGIN
+    ALTER TABLE dbo.EventLog ADD EventTypeName NVARCHAR(32) NULL;
+END
+GO
+
+-- Backfill existing rows so old events get readable names too.
+UPDATE dbo.EventLog
+SET EventTypeName = CASE EventType
+    WHEN 1  THEN N'PageOpen'
+    WHEN 2  THEN N'PageClose'
+    WHEN 3  THEN N'Heartbeat'
+    WHEN 4  THEN N'ScrollDepth'
+    WHEN 10 THEN N'VideoPlay'
+    WHEN 11 THEN N'VideoPause'
+    WHEN 12 THEN N'VideoComplete'
+    WHEN 13 THEN N'VideoProgress'
+    WHEN 20 THEN N'RegisterClick'
+    WHEN 21 THEN N'FileClick'
+    WHEN 22 THEN N'CtaClick'
+    WHEN 23 THEN N'OutboundRedirect'
+    WHEN 30 THEN N'Bounce'
+    WHEN 50 THEN N'Engagement'
+    WHEN 90 THEN N'Error'
+    WHEN 99 THEN N'BotDetected'
+    ELSE CONCAT(N'Unknown(', EventType, N')')
+END
+WHERE EventTypeName IS NULL;
 GO
 
 -- =============================================================================

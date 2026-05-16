@@ -22,6 +22,14 @@ public class EventLog
 
     public EventType EventType { get; set; }
 
+    /// <summary>
+    /// Human-readable name of <see cref="EventType"/> (e.g. "PageOpen", "VideoComplete").
+    /// Populated automatically by <see cref="EventLogNameInterceptor"/> so SQL queries
+    /// don't have to translate integer codes mentally.
+    /// </summary>
+    [MaxLength(32)]
+    public string? EventTypeName { get; set; }
+
     [Column(Order = 1)]
     public DateTime EventTime { get; set; } = DateTime.UtcNow;
 

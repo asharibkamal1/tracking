@@ -24,9 +24,13 @@ builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection(Sec
 builder.Services.Configure<GeoIpOptions>(builder.Configuration.GetSection(GeoIpOptions.SectionName));
 builder.Services.Configure<TrackingOptions>(builder.Configuration.GetSection(TrackingOptions.SectionName));
 
-builder.Services.AddDbContext<AnalyticsDbContext>(opt =>
+builder.Services.AddSingleton<EventLogNameInterceptor>();
+builder.Services.AddDbContext<AnalyticsDbContext>((sp, opt) =>
+{
     opt.UseSqlServer(builder.Configuration.GetConnectionString("AnalyticsDb"),
-        sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(2), null)));
+        sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(2), null));
+    opt.AddInterceptors(sp.GetRequiredService<EventLogNameInterceptor>());
+});
 
 // Shared services
 builder.Services.AddSingleton<ITrackingTokenService, TrackingTokenService>();
